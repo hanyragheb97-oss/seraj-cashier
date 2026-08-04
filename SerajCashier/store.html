@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مخزن المنتجات - سراج LED</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --neon-border: #a855f7;
+            --neon-glow: rgba(168, 85, 247, 0.4);
+            --bg-dark-1: #070913;
+            --bg-dark-2: #120f29;
+            --card-bg: rgba(19, 17, 44, 0.88);
+            --text-white: #ffffff;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Tahoma, sans-serif; 
+            background: linear-gradient(135deg, var(--bg-dark-1), var(--bg-dark-2)); 
+            color: var(--text-white); 
+            margin: 0; 
+            padding: 0; 
+            user-select: none; 
+            overflow-x: hidden; 
+            -webkit-tap-highlight-color: transparent;
+            min-height: 100vh;
+        }
+        
+        .view-section { display: none; }
+        .active-view { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        /* الهيدر الموحد */
+        .header { 
+            background: rgba(19, 17, 44, 0.95); 
+            backdrop-filter: blur(12px); 
+            color: var(--text-white); 
+            padding: 15px 20px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            font-size: 22px; 
+            font-weight: bold; 
+            position: sticky; 
+            top: 0; 
+            z-index: 50; 
+            border-bottom: 2px solid var(--neon-border);
+            box-shadow: 0 0 25px var(--neon-glow);
+        }
+
+        .header-back-btn {
+            background: #1d4ed8;
+            border: 2px solid #3b82f6;
+            border-radius: 8px;
+            padding: 3px 10px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.7);
+            transition: all 0.2s;
+        }
+        .header-back-btn:active { transform: scale(0.95); filter: brightness(1.2); }
+        .header-back-btn .arrow { color: white; font-size: 13px; line-height: 1; }
+        .header-back-btn .text { color: white; font-size: 10px; font-weight: bold; font-family: sans-serif; letter-spacing: 0.5px; }
+
+        /* الهيكل الرئيسي */
+        .inventory-container { max-width: 800px; margin: auto; padding: 15px; padding-bottom: 140px; }
+        
+        .search-box { 
+            display: flex; 
+            align-items: center; 
+            border: 2px solid var(--neon-border); 
+            border-radius: 16px; 
+            padding: 8px 15px; 
+            background: rgba(19, 17, 44, 0.7); 
+            margin-bottom: 20px;
+            box-shadow: 0 0 15px var(--neon-glow);
+        }
+        .search-box input { 
+            flex: 1; 
+            border: none; 
+            outline: none; 
+            font-size: 18px; 
+            padding: 8px 0; 
+            background: transparent;
+            color: var(--text-white);
+            font-weight: bold;
+        }
+
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            background: rgba(19, 17, 44, 0.8); 
+            backdrop-filter: blur(10px);
+            border-radius: 16px; 
+            overflow: hidden; 
+            box-shadow: 0 0 20px var(--neon-glow);
+            border: 2px solid var(--neon-border);
+        }
+        table th { 
+            background-color: rgba(168, 85, 247, 0.25); 
+            color: var(--text-white); 
+            padding: 14px 10px; 
+            font-size: 17px; 
+            text-align: center; 
+            cursor: pointer; 
+            white-space: nowrap;
+            border-bottom: 2px solid var(--neon-border);
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+        }
+        table td { 
+            padding: 14px 10px; 
+            border-bottom: 2px solid rgba(168, 85, 247, 0.4); /* خط فاصل واضح */
+            text-align: center; 
+            font-size: 18px; 
+            font-weight: bold; 
+            color: var(--text-white); 
+            cursor: pointer; 
+        }
+        table tr:active { background-color: rgba(168, 85, 247, 0.3); }
+        table td:first-child { text-align: right; }
+
+        .fab-container { position: fixed; bottom: 80px; left: 20px; z-index: 90; }
+        .fab-btn { 
+            background: linear-gradient(135deg, #9333ea, #db2777); 
+            color: white; 
+            border: 2px solid #ec4899; 
+            border-radius: 50%; 
+            width: 65px; 
+            height: 65px; 
+            font-size: 32px; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            box-shadow: 0 0 25px rgba(219, 39, 119, 0.7); 
+            cursor: pointer;
+        }
+        .fab-btn:active { filter: brightness(1.2); transform: scale(0.95); }
+
+        /* تفاصيل المنتج */
+        .details-container { max-width: 800px; margin: auto; background: transparent; min-height: 100vh; padding-bottom: 150px; display: flex; flex-direction: column; }
+        
+        .fixed-top-section { position: sticky; top: 62px; background: rgba(19, 17, 44, 0.95); backdrop-filter: blur(12px); z-index: 40; padding: 15px; border-bottom: 2px solid var(--neon-border); box-shadow: 0 4px 15px var(--neon-glow); }
+        .product-main-title { font-size: 26px; font-weight: bold; color: var(--text-white); text-align: center; margin-bottom: 4px; text-shadow: 0 0 15px rgba(255, 255, 255, 0.8); }
+        .product-title-line { border: 0; height: 2px; background: var(--neon-border); margin: 6px auto 12px auto; width: 90%; box-shadow: 0 0 12px var(--neon-glow); }
+        
+        .product-meta-row { display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: bold; color: var(--text-white); padding: 0 10px 8px 10px; }
+        .text-green-edit { color: #4ade80; cursor: pointer; font-weight: bold; text-shadow: 0 0 10px rgba(74, 222, 128, 0.7); }
+        .text-green-edit:hover { text-decoration: underline; }
+
+        .sticky-headers-bar { background-color: rgba(168, 85, 247, 0.25); color: var(--text-white); border-radius: 12px; padding: 12px 10px; display: flex; justify-content: space-around; font-size: 16px; font-weight: bold; text-align: center; border: 1px solid var(--neon-border); text-shadow: 0 0 8px rgba(255, 255, 255, 0.5); }
+        .sticky-headers-bar div { flex: 1; }
+
+        .scrollable-body-section { flex: 1; overflow-y: auto; max-height: calc(100vh - 330px); padding: 0 15px; }
+        
+        .lot-row-card { background: rgba(19, 17, 44, 0.75); border-bottom: 1px solid rgba(168, 85, 247, 0.2); padding: 14px 10px; display: flex; justify-content: space-around; align-items: center; text-align: center; cursor: pointer; border-radius: 12px; margin-top: 8px; border: 1px solid rgba(168, 85, 247, 0.3); }
+        .lot-row-card:active { background-color: rgba(168, 85, 247, 0.35); }
+        .lot-row-card div { flex: 1; }
+
+        .fixed-bottom-actions { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(19, 17, 44, 0.95); backdrop-filter: blur(10px); padding: 12px 15px; border-top: 2px solid var(--neon-border); z-index: 80; box-shadow: 0 -4px 25px var(--neon-glow); }
+        .total-stock-banner { display: flex; justify-content: space-between; align-items: center; background: rgba(19, 17, 44, 0.85); border: 2px solid var(--neon-border); border-radius: 25px; padding: 8px 20px; margin-bottom: 10px; max-width: 600px; margin-left: auto; margin-right: auto; box-shadow: 0 0 15px var(--neon-glow); }
+        
+        .action-buttons-row { display: flex; background: rgba(19, 17, 44, 0.9); border: 2px solid var(--neon-border); border-radius: 14px; overflow: hidden; max-width: 600px; margin: auto; box-shadow: 0 0 15px var(--neon-glow); }
+        .action-btn-main { background: transparent; color: var(--text-white); border: none; padding: 12px; flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 15px; font-weight: bold; cursor: pointer; text-shadow: 0 0 8px rgba(255, 255, 255, 0.4); }
+        .action-btn-main:active { background: rgba(168, 85, 247, 0.3); }
+
+        .unified-bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background-color: rgba(19, 17, 44, 0.95); backdrop-filter: blur(10px); display: flex; padding: 12px 15px; justify-content: center; z-index: 80; border-top: 2px solid var(--neon-border); box-shadow: 0 -4px 25px var(--neon-glow); }
+        .bottom-bar-print-btn { background: rgba(19, 17, 44, 0.85); color: var(--text-white); border: 2px solid var(--neon-border); border-radius: 20px; padding: 10px 30px; font-size: 16px; font-weight: bold; display: flex; justify-content: center; align-items: center; gap: 8px; cursor: pointer; position: relative; box-shadow: 0 0 15px var(--neon-glow); text-shadow: 0 0 8px rgba(255, 255, 255, 0.5); }
+        .bottom-bar-print-btn:active { background-color: rgba(168, 85, 247, 0.3); }
+        
+        .dropdown-menu { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: #13112c; border: 2px solid var(--neon-border); border-radius: 14px; box-shadow: 0 15px 35px rgba(0,0,0,0.7); display: none; z-index: 100; margin-bottom: 10px; overflow: hidden; width: 210px; text-align: center;}
+        .dropdown-item { padding: 14px; border-bottom: 1px solid rgba(168, 85, 247, 0.2); cursor: pointer; font-weight: bold; font-size: 15px; color: var(--text-white); text-shadow: 0 0 6px rgba(255, 255, 255, 0.4);}
+        .dropdown-item:hover { background-color: rgba(168, 85, 247, 0.3); }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(5, 7, 15, 0.85); display: none; justify-content: center; align-items: center; z-index: 200; backdrop-filter: blur(8px);}
+        .compact-modal { background: rgba(19, 17, 44, 0.95); padding: 25px; border-radius: 24px; width: 92%; max-width: 420px; box-shadow: 0 0 45px rgba(168, 85, 247, 0.6); max-height: 92vh; overflow-y: auto; border: 2px solid var(--neon-border);}
+        .compact-header { border-bottom: 2px solid rgba(168, 85, 247, 0.3); padding-bottom: 15px; margin-bottom: 20px; text-align: center;}
+        .compact-header h3 { margin: 0; font-size: 20px; color: var(--text-white); text-shadow: 0 0 12px rgba(255, 255, 255, 0.8); }
+        .form-row { margin-bottom: 15px; }
+        .form-row label { display: block; margin-bottom: 6px; font-weight: bold; font-size: 16px; color: var(--text-white); text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);}
+        .form-row input, .form-row select { width: 100%; padding: 12px; font-size: 18px; text-align: center; border: 2px solid var(--neon-border); border-radius: 14px; font-weight: bold; box-sizing: border-box; background: rgba(19, 17, 44, 0.6); color: var(--text-white); box-shadow: 0 0 10px var(--neon-glow); outline: none;}
+        .form-row input:focus, .form-row select:focus { box-shadow: 0 0 25px rgba(168, 85, 247, 0.8); border-color: #ec4899; }
+        .form-row select option { background: #13112c; color: #ffffff; }
+        
+        .btn-group { display: flex; gap: 12px; margin-top: 25px; border-top: 2px solid rgba(168, 85, 247, 0.3); padding-top: 20px; }
+        .btn-group button { flex: 1; padding: 14px; border: none; border-radius: 14px; cursor: pointer; font-size: 18px; font-weight: bold; color: white; box-shadow: 0 0 15px rgba(0,0,0,0.3); transition: all 0.2s;}
+        .confirm-btn { background: linear-gradient(135deg, #9333ea, #db2777) !important; border: 2px solid #ec4899 !important; box-shadow: 0 0 20px rgba(219, 39, 119, 0.6) !important;}
+        .cancel-btn { background: rgba(19, 17, 44, 0.8) !important; border: 2px solid var(--neon-border) !important; color: var(--text-white) !important;}
+
+        .val-red { color: #ff3333 !important; font-weight: bold; text-shadow: 0 0 12px rgba(255, 51, 51, 0.9), 0 0 25px rgba(255, 51, 51, 0.5); }
+        .val-green { color: #00ff66 !important; font-weight: bold; text-shadow: 0 0 12px rgba(0, 255, 102, 0.9), 0 0 25px rgba(0, 255, 102, 0.5); }
+    </style>
+</head>
+<body onclick="closeAllMenus()">
+
+    <!-- الشاشة 1: قائمة المنتجات الرئيسية -->
+    <div id="inventory-list-view" class="view-section active-view">
+        <div class="header">
+            <button class="header-back-btn" onclick="window.location.href='index.html'">
+                <span class="arrow">⬅</span>
+                <span class="text">BACK</span>
+            </button>
+            <span style="text-shadow: 0 0 12px rgba(255, 255, 255, 0.8);">المخزن</span>
+            <div style="width: 40px;"></div>
+        </div>
+        
+        <div class="inventory-container">
+            <div class="search-box">
+                <span style="font-size:20px; color:#c084fc; margin-left:10px;">≡</span>
+                <input type="text" id="inventorySearch" placeholder="ابحث باسم المنتج أو الصنف أو الكود..." oninput="renderInventoryTable()">
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th style="text-align: right;" onclick="sortInventory('name')">المنتج ↕</th>
+                        <th onclick="sortInventory('stock')">الرصيد ↕</th>
+                        <th onclick="sortInventory('price')">السعر ↕</th>
+                    </tr>
+                </thead>
+                <tbody id="inventoryTableBody"></tbody>
+            </table>
+        </div>
+
+        <div class="fab-container">
+            <button class="fab-btn" onclick="openAddProductModal()">➕</button>
+        </div>
+
+        <!-- الشريط السفلي الثابت -->
+        <div class="unified-bottom-bar" onclick="event.stopPropagation()">
+            <button class="bottom-bar-print-btn" onclick="togglePrintMenu(event)">
+                🖨️ طباعة / تصدير ▼
+            </button>
+            <div class="dropdown-menu" id="printMenuDropdown">
+                <div class="dropdown-item" onclick="window.print()">📄 طباعة / بي دي إف</div>
+                <div class="dropdown-item" onclick="toggleExcelSubMenu(event)">📊 إكسيل (Excel) ▶</div>
+                <div id="excelSubMenu" style="display: none; background: rgba(19, 17, 44, 0.95); border-top: 1px solid var(--neon-border);">
+                    <div class="dropdown-item" onclick="exportInventoryExcel()">📤 تصدير بيانات</div>
+                    <div class="dropdown-item" onclick="triggerExcelImport()">📥 استيراد من ملف</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- الشاشة 2: تفاصيل المنتج -->
+    <div id="product-details-view" class="view-section">
+        <div class="header">
+            <button class="header-back-btn" onclick="switchView('inventory-list-view')">
+                <span class="arrow">⬅</span>
+                <span class="text">BACK</span>
+            </button>
+            <span style="text-shadow: 0 0 12px rgba(255, 255, 255, 0.8);">تفاصيل المنتج</span>
+            <div style="width: 40px;"></div>
+        </div>
+        
+        <div class="details-container">
+            <div class="fixed-top-section">
+                <div class="product-main-title" id="detProductName">اسم المنتج</div>
+                <hr class="product-title-line">
+                <div class="product-meta-row">
+                    <span id="detCategoryText" style="color: var(--text-white);">الصنف: ---</span>
+                    <span class="text-green-edit" onclick="openEditProductModal()">تعديل البيانات</span>
+                    <span id="detBarcodeText" style="color: var(--text-white);">الكود: ---</span>
+                </div>
+
+                <div style="text-align: center; margin-bottom: 10px;">
+                    <button onclick="openAutoParentModal()" style="background: rgba(168, 85, 247, 0.25); color: #e879f9; border: 1px solid var(--neon-border); border-radius: 12px; padding: 6px 16px; font-size: 14px; font-weight: bold; cursor: pointer; box-shadow: 0 0 10px var(--neon-glow);">
+                        🔗 ربط صنف رئيسي (للسحب والتفكيك التلقائي)
+                    </button>
+                </div>
+
+                <div class="sticky-headers-bar">
+                    <div>رصيد المخزن</div>
+                    <div>سعر الشراء</div>
+                    <div>سعر البيع</div>
+                </div>
+            </div>
+
+            <div class="scrollable-body-section" id="detScrollableRows"></div>
+
+            <div class="fixed-bottom-actions">
+                <div class="total-stock-banner">
+                    <span style="font-size: 16px; font-weight: bold; color: var(--text-white);">الكمية الاجمالية بالمخزن</span>
+                    <span id="detTotalStockBadge" style="font-size: 20px; font-weight: bold; border: 2px solid var(--neon-border); border-radius: 20px; padding: 2px 15px; background: rgba(19, 17, 44, 0.85);">0</span>
+                </div>
+                <div class="action-buttons-row">
+                    <button class="action-btn-main" onclick="deleteCurrentProduct()">
+                        🗑️<br>حذف المنتج
+                    </button>
+                    <button class="action-btn-main" onclick="openAddLotModal()" style="border-right: 2px solid var(--neon-border); border-left: 2px solid var(--neon-border);">
+                        ➕<br>اضافة كمية
+                    </button>
+                    <button class="action-btn-main" onclick="openUpdatePriceModal()">
+                        ✏️<br>سعر البيع
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- نوافذ منبثقة (Modals) -->
+    <div class="modal-overlay" id="autoParentModal" onclick="this.style.display='none'">
+        <div class="compact-modal" onclick="event.stopPropagation()">
+            <div class="compact-header"><h3>🔗 ربط الصنف الرئيسي</h3></div>
+            <div class="form-row">
+                <label>اختر الكرتونة / الصنف المصدر:</label>
+                <select id="modalAutoParentSelect"></select>
+            </div>
+            <div class="form-row">
+                <label>معامل التحويل (كم قطعة في الكرتونة؟):</label>
+                <input type="number" id="modalAutoConversionRate" value="50" min="1" step="any">
+            </div>
+            <div class="btn-group">
+                <button class="cancel-btn" onclick="document.getElementById('autoParentModal').style.display='none'">إلغاء</button>
+                <button class="confirm-btn" onclick="saveAutoParentLink()">حفظ الربط</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="addProductModal" onclick="this.style.display='none'">
+        <div class="compact-modal" onclick="event.stopPropagation()">
+            <div class="compact-header"><h3>إضافة منتج جديد</h3></div>
+            <div class="form-row"><label>اسم المنتج:</label><input type="text" id="addProdName"></div>
+            <div class="form-row"><label>الصنف:</label><input type="text" id="addProdCategory" placeholder="مثال: كهرباء..."></div>
+            <div class="form-row"><label>الكود (اختياري):</label><input type="text" id="addProdBarcode" placeholder="يترك فارغاً للتلقائي"></div>
+            <div class="form-row"><label>سعر الشراء:</label><input type="number" id="addProdPurchase" value="0" min="0" step="any"></div>
+            <div class="form-row"><label>سعر البيع:</label><input type="number" id="addProdPrice" value="0" min="0" step="any"></div>
+            <div class="form-row"><label>الكمية الافتتاحية:</label><input type="number" id="addProdStock" value="0" step="any"></div>
+            <div class="btn-group">
+                <button class="cancel-btn" onclick="document.getElementById('addProductModal').style.display='none'">إلغاء</button>
+                <button class="confirm-btn" onclick="confirmAddProduct()">حفظ</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="editProductModal" onclick="this.style.display='none'">
+        <div class="compact-modal" onclick="event.stopPropagation()">
+            <div class="compact-header"><h3>تعديل بيانات المنتج</h3></div>
+            <div class="form-row"><label>اسم المنتج:</label><input type="text" id="editProdName"></div>
+            <div class="form-row"><label>الصنف:</label><input type="text" id="editProdCategory"></div>
+            <div class="form-row"><label>الكود:</label><input type="text" id="editProdBarcode"></div>
+            <div class="btn-group">
+                <button class="cancel-btn" onclick="document.getElementById('editProductModal').style.display='none'">إلغاء</button>
+                <button class="confirm-btn" onclick="confirmEditProduct()">تحديث</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="addLotModal" onclick="this.style.display='none'">
+        <div class="compact-modal" onclick="event.stopPropagation()">
+            <div class="compact-header"><h3>إضافة كمية جديدة</h3></div>
+            <div class="form-row"><label>المورد / البيان:</label><input type="text" id="lotSupplier" placeholder="اسم المورد..."></div>
+            <div class="form-row"><label>الكمية:</label><input type="number" id="lotStock" value="1" step="any"></div>
+            <div class="form-row"><label>سعر الشراء:</label><input type="number" id="lotPurchase" value="0" min="0" step="any"></div>
+            <div class="form-row"><label>سعر البيع:</label><input type="number" id="lotPrice" value="0" min="0" step="any"></div>
+            <div class="btn-group">
+                <button class="cancel-btn" onclick="document.getElementById('addLotModal').style.display='none'">إلغاء</button>
+                <button class="confirm-btn" onclick="confirmAddLot()">إضافة</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="editLotModal" onclick="this.style.display='none'">
+        <div class="compact-modal" onclick="event.stopPropagation()">
+            <div class="compact-header"><h3>تعديل دفعة / حركة المخزن</h3></div>
+            <input type="hidden" id="editLotIndex">
+            <div class="form-row"><label>الكمية (الرصيد):</label><input type="number" id="editLotStock" step="any"></div>
+            <div class="form-row"><label>سعر الشراء:</label><input type="number" id="editLotPurchase" min="0" step="any"></div>
+            <div class="form-row"><label>سعر البيع:</label><input type="number" id="editLotPrice" min="0" step="any"></div>
+            <div class="btn-group">
+                <button class="cancel-btn" onclick="document.getElementById('editLotModal').style.display='none'">إلغاء</button>
+                <button class="confirm-btn" onclick="saveEditedLot()">حفظ التعديل</button>
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="excelFileInput" style="display: none;" accept=".xlsx, .xls" onchange="handleExcelImport(event)">
+<script src="db.js"></script>
+<script>
+    // التأمين ضد الكراش إذا كان الـ DB غير موجود
+    let productsDB = [];
+    let currentSortField = 'name';
+    let currentSortAsc = false;
+    let currentActiveProductId = null;
+
+    function safeLoadProducts() {
+        try {
+            if (typeof DB !== 'undefined') {
+                productsDB = DB.getProducts();
+            } else {
+                productsDB = JSON.parse(localStorage.getItem('seraj_products')) || [];
+            }
+            
+            // تصحيح المنتجات
+            productsDB.forEach((p, idx) => {
+                if (!p.id) p.id = Date.now() + idx;
+            });
+            saveProductsDB();
+        } catch(e) {
+            productsDB = [];
+        }
+    }
+
+    function saveProductsDB() {
+        try {
+            if (typeof DB !== 'undefined') {
+                DB.saveProducts(productsDB);
+            } else {
+                localStorage.setItem('seraj_products', JSON.stringify(productsDB));
+            }
+        } catch (e) {
+            console.error("Error saving to local storage.");
+        }
+    }
+
+    function applyFallbackTheme() {
+        if (typeof DB !== 'undefined' && DB.applySavedTheme) {
+            DB.applySavedTheme();
+        } else {
+            let b = localStorage.getItem('seraj_theme_border');
+            let g = localStorage.getItem('seraj_theme_glow');
+            if(b && g) {
+                document.documentElement.style.setProperty('--neon-border', b);
+                document.documentElement.style.setProperty('--neon-glow', g);
+                let d1 = localStorage.getItem('seraj_theme_bg1');
+                if(d1) document.documentElement.style.setProperty('--bg-dark-1', d1);
+                let d2 = localStorage.getItem('seraj_theme_bg2');
+                if(d2) document.documentElement.style.setProperty('--bg-dark-2', d2);
+                let card = localStorage.getItem('seraj_theme_card');
+                if(card) document.documentElement.style.setProperty('--card-bg', card);
+                let text = localStorage.getItem('seraj_theme_text');
+                if(text) document.documentElement.style.setProperty('--text-white', text);
+            }
+        }
+    }
+
+    window.onload = () => {
+        applyFallbackTheme();
+        safeLoadProducts();
+        renderInventoryTable();
+    };
+
+    function closeAllMenus() {
+        ['printMenuDropdown', 'excelSubMenu'].forEach(id => {
+            let el = document.getElementById(id);
+            if(el) {
+                el.style.display = 'none';
+            }
+        });
+    }
+
+    function switchView(viewId) {
+        document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active-view'));
+        document.getElementById(viewId).classList.add('active-view');
+        if(viewId === 'inventory-list-view') {
+            renderInventoryTable();
+        }
+    }
+
+    function togglePrintMenu(e) { 
+        e.stopPropagation(); 
+        let m = document.getElementById('printMenuDropdown'); 
+        let sub = document.getElementById('excelSubMenu');
+        if(m.style.display === 'block') {
+            m.style.display = 'none';
+            sub.style.display = 'none';
+        } else {
+            closeAllMenus();
+            m.style.display = 'block';
+        }
+    }
+
+    function toggleExcelSubMenu(e) {
+        e.stopPropagation();
+        let sub = document.getElementById('excelSubMenu');
+        sub.style.display = sub.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function getProductStock(p) {
+        return (p.lots && p.lots.length > 0) ? p.lots.reduce((sum, l) => sum + (l.stock || 0), 0) : (p.stock || 0);
+    }
+
+    function getProductPrice(p) {
+        return (p.lots && p.lots.length > 0) ? p.lots[p.lots.length - 1].price : (p.price || 0);
+    }
+
+    function checkAndRunAutoUnpack(p) {
+        if (!p || !p.autoParentId) return;
+        let currentStock = getProductStock(p);
+        
+        if (currentStock < 0) {
+            let parentP = productsDB.find(x => x.id === p.autoParentId);
+            if (!parentP) return;
+
+            let rate = p.autoConversionRate || 50;
+            let deficitUnits = Math.abs(currentStock);
+            let cartonsNeeded = Math.ceil(deficitUnits / rate);
+
+            let todayStr = new Date().toISOString().split('T')[0];
+            let parentPurchasePrice = parentP.lots && parentP.lots.length > 0 ? parentP.lots[parentP.lots.length - 1].purchasePrice : 0;
+            let unitPurchaseCost = parentPurchasePrice > 0 ? (parentPurchasePrice / rate) : 0;
+            let currentSell = getProductPrice(p);
+
+            if (!parentP.lots) parentP.lots = [];
+            parentP.lots.push({
+                supplier: `سحب تلقائي (فك كرتونة) لصالح : ${p.name}`,
+                stock: -cartonsNeeded,
+                purchasePrice: parentPurchasePrice,
+                price: parentP.lots.length > 0 ? parentP.lots[parentP.lots.length - 1].price : 0,
+                date: todayStr
+            });
+
+            let unitsAdded = cartonsNeeded * rate;
+            if (!p.lots) p.lots = [];
+            p.lots.unshift({
+                supplier: `سحب تلقائي من : ${parentP.name}`,
+                stock: unitsAdded,
+                purchasePrice: unitPurchaseCost,
+                price: currentSell,
+                date: todayStr
+            });
+
+            saveProductsDB();
+        }
+    }
+
+    function sortInventory(field) {
+        if(currentSortField === field) currentSortAsc = !currentSortAsc;
+        else { currentSortField = field; currentSortAsc = false; }
+        renderInventoryTable();
+    }
+
+    function renderInventoryTable() {
+        productsDB.forEach(p => {
+            if (p.autoParentId) checkAndRunAutoUnpack(p);
+        });
+
+        const query = document.getElementById('inventorySearch').value.trim().toLowerCase();
+        const tbody = document.getElementById('inventoryTableBody');
+        tbody.innerHTML = '';
+
+        let filtered = productsDB.filter(p => 
+            p.name.toLowerCase().includes(query) || 
+            (p.category && p.category.toLowerCase().includes(query)) || 
+            (p.barcode && p.barcode.toLowerCase().includes(query))
+        );
+
+        filtered.sort((a, b) => {
+            if(currentSortField === 'name') {
+                return currentSortAsc ? (a.id - b.id) : (b.id - a.id);
+            } else if(currentSortField === 'stock') {
+                let valA = getProductStock(a);
+                let valB = getProductStock(b);
+                return currentSortAsc ? valA - valB : valB - valA;
+            } else if(currentSortField === 'price') {
+                let valA = getProductPrice(a);
+                let valB = getProductPrice(b);
+                return currentSortAsc ? valA - valB : valB - valA;
+            } else {
+                let valA = a[currentSortField] || '';
+                let valB = b[currentSortField] || '';
+                if(typeof valA === 'string') {
+                    return currentSortAsc ? valA.localeCompare(valB, 'ar') : valB.localeCompare(valA, 'ar');
+                } else {
+                    return currentSortAsc ? valA - valB : valB - valA;
+                }
+            }
+        });
+
+        if(filtered.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="3" style="color:#7f8c8d; padding:30px;">لا توجد منتجات مطابقة للبحث</td></tr>`;
+            return;
+        }
+
+        filtered.forEach(p => {
+            const tr = document.createElement('tr');
+            tr.onclick = () => openProductDetails(p.id);
+
+            let totalStock = getProductStock(p);
+            let displayPrice = getProductPrice(p);
+
+            // التعديل هنا: شيلنا عمود الصنف، حطيناه تحت الاسم بخط صغير، وشيلنا كلمة جنيه
+            tr.innerHTML = `
+                <td style="text-align: right;">
+                    <strong style="color: var(--text-white);">${p.name}</strong><br>
+                    <span style="font-size:12px; color:var(--neon-border);">صنف: ${p.category || 'عام'} | كود: ${p.barcode || '---'}</span>
+                </td>
+                <td><span class="${totalStock >= 0 ? 'val-green' : 'val-red'}">${totalStock.toFixed(2)}</span></td>
+                <td class="val-green">${displayPrice.toFixed(2)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function openAddProductModal() {
+        document.getElementById('addProdName').value = '';
+        document.getElementById('addProdCategory').value = '';
+        document.getElementById('addProdBarcode').value = '';
+        document.getElementById('addProdPurchase').value = '0';
+        document.getElementById('addProdPrice').value = '0';
+        document.getElementById('addProdStock').value = '0';
+        document.getElementById('addProductModal').style.display = 'flex';
+    }
+
+    function confirmAddProduct() {
+        let name = document.getElementById('addProdName').value.trim();
+        let category = document.getElementById('addProdCategory').value.trim() || 'عام';
+        let barcode = document.getElementById('addProdBarcode').value.trim();
+        let purchase = Math.max(0, parseFloat(document.getElementById('addProdPurchase').value) || 0);
+        let price = Math.max(0, parseFloat(document.getElementById('addProdPrice').value) || 0);
+        let stock = parseFloat(document.getElementById('addProdStock').value) || 0;
+
+        if(!name) return alert("برجاء إدخال اسم المنتج!");
+        if(price < purchase) return alert("تنبيه: سعر البيع لا يمكن أن يكون أقل من سعر الشراء!");
+
+        if(!barcode) {
+            let maxNum = 0;
+            productsDB.forEach(p => {
+                let n = parseInt(p.barcode);
+                if(!isNaN(n) && n > maxNum) maxNum = n;
+            });
+            barcode = (maxNum + 1).toString();
+        } else {
+            let exists = productsDB.some(p => p.barcode === barcode);
+            if(exists) {
+                alert("هذا الكود مستخدم مسبقاً، سيتم توليد رقم تسلسلي تلقائي.");
+                let maxNum = 0;
+                productsDB.forEach(p => {
+                    let n = parseInt(p.barcode);
+                    if(!isNaN(n) && n > maxNum) maxNum = n;
+                });
+                barcode = (maxNum + 1).toString();
+            }
+        }
+
+        let todayStr = new Date().toISOString().split('T')[0];
+        productsDB.push({
+            id: Date.now(),
+            name: name,
+            category: category,
+            barcode: barcode,
+            autoParentId: null,
+            autoConversionRate: 50,
+            lots: [{ supplier: 'رصيد افتتاحى', stock: stock, purchasePrice: purchase, price: price, date: todayStr }]
+        });
+
+        saveProductsDB();
+        document.getElementById('addProductModal').style.display = 'none';
+        renderInventoryTable();
+    }
+
+    function openProductDetails(id) {
+        currentActiveProductId = id;
+        const p = productsDB.find(x => x.id === id);
+        if(!p) return;
+
+        checkAndRunAutoUnpack(p);
+
+        document.getElementById('detProductName').innerText = p.name;
+        document.getElementById('detCategoryText').innerText = `الصنف: ${p.category || 'عام'}`;
+        document.getElementById('detBarcodeText').innerText = `الكود: ${p.barcode || '---'}`;
+
+        if(!p.lots || p.lots.length === 0) {
+            let todayStr = new Date().toISOString().split('T')[0];
+            p.lots = [{ supplier: 'رصيد افتتاحي', stock: p.stock || 0, purchasePrice: p.purchasePrice || 0, price: p.price || 0, date: todayStr }];
+        }
+
+        renderDetailsLots(p);
+        switchView('product-details-view');
+    }
+
+    function openAutoParentModal() {
+        const p = productsDB.find(x => x.id === currentActiveProductId);
+        if(!p) return;
+
+        let select = document.getElementById('modalAutoParentSelect');
+        select.innerHTML = `<option value="">-- بدون ربط (إلغاء الربط) --</option>`;
+        productsDB.forEach(otherP => {
+            if (otherP.id !== p.id) {
+                let sel = (p.autoParentId === otherP.id) ? 'selected' : '';
+                select.innerHTML += `<option value="${otherP.id}" ${sel}>${otherP.name}</option>`;
+            }
+        });
+        document.getElementById('modalAutoConversionRate').value = p.autoConversionRate || 50;
+        document.getElementById('autoParentModal').style.display = 'flex';
+    }
+
+    function saveAutoParentLink() {
+        const p = productsDB.find(x => x.id === currentActiveProductId);
+        if(!p) return;
+
+        let parentId = document.getElementById('modalAutoParentSelect').value;
+        let rate = parseInt(document.getElementById('modalAutoConversionRate').value) || 50;
+
+        p.autoParentId = parentId ? parseInt(parentId) : null;
+        p.autoConversionRate = rate;
+
+        saveProductsDB();
+        document.getElementById('autoParentModal').style.display = 'none';
+        alert("تم حفظ ربط الصنف الرئيسي بنجاح!");
+    }
+
+    function renderDetailsLots(p) {
+        if(p.lots) {
+            p.lots = p.lots.filter(l => (l.stock || 0) !== 0);
+            saveProductsDB();
+        }
+
+        const scrollableContainer = document.getElementById('detScrollableRows');
+        scrollableContainer.innerHTML = '';
+
+        let totalStockSum = 0;
+
+        p.lots.forEach((lot, index) => {
+            totalStockSum += (lot.stock || 0);
+            const rowCard = document.createElement('div');
+            rowCard.className = 'lot-row-card';
+            
+            let dateStr = lot.date || '';
+            let supplierStr = lot.supplier || '';
+
+            rowCard.onclick = () => openEditLotModal(index);
+
+            rowCard.innerHTML = `
+                <div style="text-align: right;">
+                    <div style="font-size: 22px; font-weight: bold;" class="${(lot.stock || 0) >= 0 ? 'val-green' : 'val-red'}">${(lot.stock || 0).toFixed(2)}</div>
+                    <div style="font-size: 11px; color: #cbd5e1; margin-top: 2px;">${supplierStr}<br>${dateStr}</div>
+                </div>
+                <div style="font-size: 20px; font-weight: bold; color: var(--text-white);">${(lot.purchasePrice || 0).toFixed(2)}</div>
+                <div style="font-size: 20px; font-weight: bold; color: var(--text-white);">${(lot.price || 0).toFixed(2)}</div>
+            `;
+            scrollableContainer.appendChild(rowCard);
+        });
+
+        let badge = document.getElementById('detTotalStockBadge');
+        badge.innerText = totalStockSum.toFixed(2);
+        badge.className = totalStockSum >= 0 ? 'val-green' : 'val-red';
+    }
+
+    function openEditLotModal(index) {
+        let p = productsDB.find(x => x.id === currentActiveProductId);
+        if(!p || !p.lots[index]) return;
+        let lot = p.lots[index];
+
+        document.getElementById('editLotIndex').value = index;
+        document.getElementById('editLotStock').value = lot.stock;
+        document.getElementById('editLotPurchase').value = lot.purchasePrice;
+        document.getElementById('editLotPrice').value = lot.price;
+
+        let purInput = document.getElementById('editLotPurchase');
+        let supplierStr = lot.supplier || '';
+        if(supplierStr.includes('فاتورة شراء')) {
+            purInput.disabled = true;
+            purInput.style.background = 'rgba(19, 17, 44, 0.4)';
+            purInput.style.color = '#7f8c8d';
+        } else {
+            purInput.disabled = false;
+            purInput.style.background = 'rgba(19, 17, 44, 0.6)';
+            purInput.style.color = 'var(--text-white)';
+        }
+
+        document.getElementById('editLotModal').style.display = 'flex';
+    }
+
+    function saveEditedLot() {
+        let index = parseInt(document.getElementById('editLotIndex').value);
+        let p = productsDB.find(x => x.id === currentActiveProductId);
+        if(!p || !p.lots[index]) return;
+
+        let newStock = parseFloat(document.getElementById('editLotStock').value) || 0;
+        let newPrice = Math.max(0, parseFloat(document.getElementById('editLotPrice').value) || 0);
+        let lot = p.lots[index];
+
+        lot.stock = newStock;
+        lot.price = newPrice;
+
+        let supplierStr = lot.supplier || '';
+        if(!supplierStr.includes('فاتورة شراء')) {
+            let newPurchase = Math.max(0, parseFloat(document.getElementById('editLotPurchase').value) || 0);
+            lot.purchasePrice = newPurchase;
+        }
+
+        saveProductsDB();
+        document.getElementById('editLotModal').style.display = 'none';
+        renderDetailsLots(p);
+        alert("تم تحديث الدفعة بنجاح!");
+    }
+
+    function openEditProductModal() {
+        const p = productsDB.find(x => x.id === currentActiveProductId);
+        if(!p) return;
+        document.getElementById('editProdName').value = p.name;
+        document.getElementById('editProdCategory').value = p.category || '';
+        document.getElementById('editProdBarcode').value = p.barcode || '';
+        document.getElementById('editProductModal').style.display = 'flex';
+    }
+
+    function confirmEditProduct() {
+        let p = productsDB.find(x => x.id === currentActiveProductId);
+        if(!p) return;
+        p.name = document.getElementById('editProdName').value.trim() || p.name;
+        p.category = document.getElementById('editProdCategory').value.trim() || 'عام';
+        p.barcode = document.getElementById('editProdBarcode').value.trim();
+
+        saveProductsDB();
+        document.getElementById('editProductModal').style.display = 'none';
+        
+        document.getElementById('detProductName').innerText = p.name;
+        document.getElementById('detCategoryText').innerText = `الصنف: ${p.category}`;
+        document.getElementById('detBarcodeText').innerText = `الكود: ${p.barcode || '---'}`;
+        alert("تم تحديث بيانات المنتج بنجاح!");
+    }
+
+    function openAddLotModal() {
+        document.getElementById('lotSupplier').value = '';
+        document.getElementById('lotStock').value = '1';
+        document.getElementById('lotPurchase').value = '0';
+        document.getElementById('lotPrice').value = '0';
+        document.getElementById('addLotModal').style.display = 'flex';
+    }
+
+    function confirmAddLot() {
+        let p = productsDB.find(x => x.id === currentActiveProductId);
+        if(!p) return;
+        let supplier = document.getElementById('lotSupplier').value.trim() || 'إضافة مباشرة';
+        let stockToAdd = parseFloat(document.getElementById('lotStock').value) || 0;
+        let purchase = Math.max(0, parseFloat(document.getElementById('lotPurchase').value) || 0);
+        let price = Math.max(0, parseFloat(document.getElementById('lotPrice').value) || 0);
+        let todayStr = new Date().toISOString().split('T')[0];
+
+        if(!p.lots) p.lots = [];
+
+        let currentTotalStock = getProductStock(p);
+        if (currentTotalStock < 0) {
+            let deficit = Math.abs(currentTotalStock);
+            if (stockToAdd <= deficit) {
+                p.lots.push({ supplier: supplier + " (تغطية عجز)", stock: stockToAdd, purchasePrice: purchase, price: price, date: todayStr });
+                stockToAdd = 0;
+            } else {
+                p.lots.push({ supplier: supplier + " (تغطية عجز)", stock: deficit, purchasePrice: purchase, price: price, date: todayStr });
+                stockToAdd -= deficit;
+                if (stockToAdd > 0) {
+                    p.lots.push({ supplier: supplier, stock: stockToAdd, purchasePrice: purchase, price: price, date: todayStr });
+                }
+            }
+        } else {
+            p.lots.push({ supplier: supplier, stock: stockToAdd, purchasePrice: purchase, price: price, date: todayStr });
+        }
+
+        p.lots.forEach(l => l.price = price);
+
+        saveProductsDB();
+        document.getElementById('addLotModal').style.display = 'none';
+        renderDetailsLots(p);
+        alert("تمت إضافة الكمية وتعديل الرصيد بنجاح!");
+    }
+
+    function openUpdatePriceModal() {
+        let newPrice = prompt("أدخل سعر البيع الجديد للكل:");
+        if(newPrice === null) return;
+        let val = Math.max(0, parseFloat(newPrice));
+        if(isNaN(val)) return alert("أدخل سعر صحيح!");
+
+        let p = productsDB.find(x => x.id === currentActiveProductId);
+        if(!p || !p.lots) return;
+        p.lots.forEach(l => l.price = val);
+
+        saveProductsDB();
+        renderDetailsLots(p);
+        alert("تم تحديث سعر البيع بنجاح!");
+    }
+
+    function deleteCurrentProduct() {
+        if(!confirm("هل أنت متأكد من حذف هذا المنتج نهائياً؟")) return;
+        productsDB = productsDB.filter(x => x.id !== currentActiveProductId);
+        saveProductsDB();
+        switchView('inventory-list-view');
+    }
+
+    function exportInventoryExcel() {
+        if(productsDB.length === 0) return alert("لا توجد منتجات لتصديرها!");
+        let exportData = [];
+        productsDB.forEach(p => {
+            let totalStock = getProductStock(p);
+            let avgPurchase = (p.lots && p.lots.length > 0) ? p.lots[p.lots.length - 1].purchasePrice : (p.purchasePrice || 0);
+            let displayPrice = getProductPrice(p);
+            exportData.push({
+                "اسم المنتج": p.name,
+                "الصنف": p.category || 'عام',
+                "الكود": p.barcode || '---',
+                "إجمالي الرصيد": totalStock,
+                "سعر الشراء": avgPurchase,
+                "سعر البيع": displayPrice
+            });
+        });
+        let ws = XLSX.utils.json_to_sheet(exportData);
+        let wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "المخزن");
+        XLSX.writeFile(wb, "Store_Inventory.xlsx");
+    }
+
+    function triggerExcelImport() {
+        document.getElementById('excelFileInput').click();
+    }
+
+    function handleExcelImport(e) {
+        let file = e.target.files[0];
+        if(!file) return;
+        let reader = new FileReader();
+        reader.onload = function(evt) {
+            try {
+                let data = new Uint8Array(evt.target.result);
+                let workbook = XLSX.read(data, {type: 'array'});
+                let firstSheetName = workbook.SheetNames[0];
+                let worksheet = workbook.Sheets[firstSheetName];
+                let json = XLSX.utils.sheet_to_json(worksheet);
+                
+                if(json && json.length > 0) {
+                    json.forEach(item => {
+                        let name = item["اسم المنتج"] || item["name"] || "منتج مستورد";
+                        let category = item["الصنف"] || item["category"] || "عام";
+                        let barcode = item["الكود"] || item["الباركود"] || item["barcode"] || "";
+                        let stock = parseFloat(item["إجمالي الرصيد"] || item["الرصيد"] || item["stock"]) || 0;
+                        let purchase = parseFloat(item["سعر الشراء"] || item["purchasePrice"]) || 0;
+                        let price = parseFloat(item["سعر البيع"] || item["price"]) || 0;
+                        let todayStr = new Date().toISOString().split('T')[0];
+
+                        productsDB.push({
+                            id: Date.now() + Math.random(),
+                            name: name,
+                            category: category,
+                            barcode: barcode,
+                            autoParentId: null,
+                            autoConversionRate: 50,
+                            lots: [{ supplier: 'استيراد إكسيل', stock: stock, purchasePrice: purchase, price: price, date: todayStr }]
+                        });
+                    });
+                    saveProductsDB();
+                    renderInventoryTable();
+                    alert("تم استيراد ملف الإكسيل بنجاح!");
+                }
+            } catch(err) {
+                alert("حدث خطأ أثناء قراءة ملف الإكسيل!");
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+</script>
+</body>
+</html>

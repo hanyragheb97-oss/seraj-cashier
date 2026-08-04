@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سجل المبيعات - سراج LED</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --neon-border: #a855f7;
+            --neon-glow: rgba(168, 85, 247, 0.4);
+            --bg-dark-1: #070913;
+            --bg-dark-2: #120f29;
+            --card-bg: rgba(19, 17, 44, 0.88);
+            --text-white: #ffffff;
+        }
+        
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: linear-gradient(135deg, var(--bg-dark-1), var(--bg-dark-2)); color: var(--text-white); margin: 0; padding: 0; user-select: none; overflow-x: hidden; -webkit-tap-highlight-color: transparent; min-height: 100vh;}
+        .view-section { display: none; }
+        .active-view { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        .header { background: rgba(19, 17, 44, 0.95); backdrop-filter: blur(12px); color: #ffffff; padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; font-size: 22px; font-weight: bold; position: sticky; top: 0; z-index: 50; border-bottom: 2px solid var(--neon-border); box-shadow: 0 0 25px var(--neon-glow);}
+        
+        .header-back-btn {
+            background: #1d4ed8; border: 2px solid #3b82f6; border-radius: 8px; padding: 3px 10px; cursor: pointer;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 0 12px rgba(59, 130, 246, 0.7); transition: all 0.2s;
+        }
+        .header-back-btn:active { transform: scale(0.95); filter: brightness(1.2); }
+        .header-back-btn .arrow { color: white; font-size: 13px; line-height: 1; }
+        .header-back-btn .text { color: white; font-size: 10px; font-weight: bold; font-family: sans-serif; }
+
+        .header-menu-btn {
+            background: rgba(19, 17, 44, 0.95); border: 2px solid var(--neon-border); border-radius: 10px;
+            width: 40px; height: 40px; font-size: 22px; color: var(--text-white); display: flex;
+            align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 0 12px var(--neon-glow);
+        }
+        .header-menu-btn:active { transform: scale(0.95); filter: brightness(1.3); }
+
+        .header-dropdown-wide { 
+            position: absolute; top: 100%; left: 0; background: rgba(19, 17, 44, 0.98); 
+            border: 2px solid var(--neon-border); border-radius: 16px; 
+            box-shadow: 0 15px 35px rgba(0,0,0,0.9); display: none; z-index: 100; 
+            margin-top: 8px; width: 220px; text-align: right; padding: 12px; box-sizing: border-box;
+        }
+        .dropdown-item { padding: 14px 18px; border-bottom: 1px solid rgba(168, 85, 247, 0.3); cursor: pointer; font-weight: bold; font-size: 16px; color: var(--text-white); display: flex; justify-content: space-between; align-items: center;}
+        .dropdown-item:last-child { border-bottom: none; }
+        .dropdown-item:active { background-color: var(--neon-glow); }
+        
+        .sub-accordion-content { display: none; background: rgba(10, 8, 25, 0.95); border: 1px solid var(--neon-border); border-radius: 10px; margin-bottom: 10px; overflow: hidden; padding: 4px;}
+        .sub-dropdown-item { padding: 12px 16px; border-bottom: 1px solid rgba(168, 85, 247, 0.2); cursor: pointer; font-weight: bold; font-size: 15px; color: var(--text-white); text-align: right;}
+        .sub-dropdown-item:last-child { border-bottom: none; }
+        .sub-dropdown-item:active { background-color: var(--neon-glow); }
+
+        .history-container { max-width: 800px; margin: auto; min-height: 100vh; padding-bottom: 120px;}
+        
+        .filter-section { background: rgba(19, 17, 44, 0.85); backdrop-filter: blur(10px); padding: 15px; border-bottom: 2px solid var(--neon-border); position: sticky; top: 62px; z-index: 40; box-shadow: 0 4px 15px var(--neon-glow);}
+        .filter-header-row { display: flex; justify-content: space-between; align-items: center; gap: 10px;}
+        
+        /* تعديل القائمة المنسدلة لتكون في المنتصف */
+        .filter-select { flex: 1; padding: 12px; font-size: 18px; border: 2px solid var(--neon-border); border-radius: 14px; background-color: rgba(19, 17, 44, 0.6); font-weight: bold; color: #ffffff; outline: none; box-shadow: 0 0 10px rgba(168, 85, 247, 0.25); text-shadow: 0 0 6px rgba(255,255,255,0.8); text-align: center; text-align-last: center;}
+        
+        .search-toggle-btn { background: rgba(19, 17, 44, 0.9); color: #ffffff; border: 2px solid var(--neon-border); border-radius: 14px; padding: 0 18px; font-size: 22px; display: flex; justify-content: center; align-items: center; cursor: pointer; box-shadow: 0 0 12px rgba(168, 85, 247, 0.3); transition: all 0.2s;}
+        .search-toggle-btn:active { box-shadow: 0 0 25px rgba(168, 85, 247, 0.8); filter: brightness(1.3); }
+        
+        .full-search-area { display: none; margin-top: 15px; padding-top: 15px; border-top: 1px dashed rgba(168, 85, 247, 0.4); animation: fadeIn 0.2s;}
+        .search-container { position: relative; display: flex; width: 100%;}
+        .search-input { flex: 1; padding: 12px; font-size: 16px; border: 2px solid var(--neon-border); border-radius: 14px; box-sizing: border-box; background: rgba(19, 17, 44, 0.6); color: #ffffff; box-shadow: 0 0 10px rgba(168, 85, 247, 0.25); outline: none; font-weight: bold;}
+        .search-input:focus { box-shadow: 0 0 25px rgba(168, 85, 247, 0.7); }
+        
+        .radio-group { display: flex; justify-content: space-around; font-size: 16px; font-weight: bold; color: #ffffff; margin-top: 12px; text-shadow: 0 0 6px rgba(255,255,255,0.6);}
+        .radio-group label { display: flex; align-items: center; gap: 5px; cursor: pointer;}
+        
+        .dropdown-list { position: absolute; top: 100%; right: 0; width: 100%; background: #13112c; border: 2px solid var(--neon-border); border-radius: 0 0 16px 16px; max-height: 200px; overflow-y: auto; z-index: 100; display: none; box-shadow: 0 15px 35px rgba(0,0,0,0.5);}
+        .list-search-item { padding: 12px 15px; border-bottom: 1px solid rgba(168, 85, 247, 0.2); cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: space-between; color: #ffffff; text-shadow: 0 0 6px rgba(255,255,255,0.8);}
+        .list-search-item:active { background-color: rgba(168, 85, 247, 0.2); }
+        
+        .invoice-list { padding: 10px;}
+        .invoice-card { background: rgba(19, 17, 44, 0.7); backdrop-filter: blur(10px); border-radius: 12px; margin-bottom: 10px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 0 10px rgba(168, 85, 247, 0.15); border: 2px solid var(--neon-border); cursor: pointer; transition: 0.2s;}
+        .invoice-card:active { background-color: rgba(168, 85, 247, 0.25); box-shadow: 0 0 20px rgba(168, 85, 247, 0.6); }
+        .inv-info { text-align: right; }
+        .inv-customer { font-size: 16px; font-weight: bold; color: #ffffff; margin-bottom: 3px; text-shadow: 0 0 8px rgba(255, 255, 255, 0.8);}
+        .inv-meta { font-size: 13px; color: #cbd5e1; line-height: 1.4; font-weight: bold;}
+        .inv-amount { font-size: 20px; font-weight: bold; transition: color 0.3s; }
+
+        .context-menu { position: absolute; background: #13112c; border: 2px solid var(--neon-border); box-shadow: 0 0 30px rgba(168, 85, 247, 0.5); border-radius: 16px; width: 210px; z-index: 9999; display: none; overflow: hidden; padding: 5px 0;}
+        .context-menu div { padding: 14px; font-size: 16px; color: #ffffff; cursor: pointer; text-align: right; font-weight: bold; border-bottom: 1px solid rgba(168, 85, 247, 0.2); transition: background 0.2s; text-shadow: 0 0 6px rgba(255,255,255,0.8);}
+        .context-menu div:active { background-color: rgba(168, 85, 247, 0.25); }
+        .context-menu div:last-child { border-bottom: none; }
+        
+        .unified-bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(19, 17, 44, 0.95); backdrop-filter: blur(10px); border-top: 2px solid var(--neon-border); display: flex; align-items: center; padding: 12px 15px; gap: 15px; z-index: 80; box-shadow: 0 -4px 25px var(--neon-glow);}
+        .bottom-bar-dropdown { flex: 1; background: rgba(19, 17, 44, 0.6); border: 2px solid var(--neon-border); border-radius: 20px; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: bold; color: #ffffff; cursor: pointer; position: relative; box-shadow: 0 0 10px var(--neon-glow); text-shadow: 0 0 6px rgba(255,255,255,0.8);}
+        
+        .dropdown-menu { position: absolute; bottom: 100%; top: auto; margin-bottom: 8px; background: #13112c; border: 2px solid var(--neon-border); border-radius: 14px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); display: none; z-index: 100; overflow: hidden; width: 220px; text-align: right;}
+        .dropdown-menu-item { padding: 12px 14px; border-bottom: 1px solid rgba(168, 85, 247, 0.2); cursor: pointer; font-weight: bold; font-size: 15px; color: #ffffff; transition: background 0.2s;}
+        .dropdown-menu-item:active { background-color: rgba(168, 85, 247, 0.25); }
+
+        .details-container, .edit-screen-container { padding: 15px; max-width: 800px; margin: auto; background: transparent; min-height: 100vh; padding-bottom: 100px;}
+        .details-header-card { background: rgba(19, 17, 44, 0.7); backdrop-filter: blur(10px); border: 2px solid var(--neon-border); padding: 16px; border-radius: 16px; margin-bottom: 20px; font-size: 17px; line-height: 1.8; box-shadow: 0 0 20px var(--neon-glow); color: #ffffff;}
+        
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; text-align: center; font-size: 16px; background: rgba(19, 17, 44, 0.7); backdrop-filter: blur(10px); box-shadow: 0 0 20px var(--neon-glow); border-radius: 16px; overflow: hidden; border: 2px solid var(--neon-border);}
+        table th { background-color: rgba(168, 85, 247, 0.15); padding: 12px; border-bottom: 2px solid var(--neon-border); color: #ffffff; font-weight: bold; text-shadow: 0 0 8px rgba(255,255,255,0.8);}
+        table td { padding: 16px 10px; border-bottom: 2px solid var(--neon-border); cursor: grab; touch-action: pan-y; color: #ffffff; font-weight: bold;}
+        table tr:last-child td { border-bottom: none; }
+        .swipe-row { transition: transform 0.2s ease-out; background: rgba(19, 17, 44, 0.5); touch-action: pan-y;}
+
+        .details-total { font-size: 24px; font-weight: bold; color: #ff1a40; text-align: center; padding: 20px; background: rgba(19, 17, 44, 0.8); border-radius: 16px; margin-top: 20px; border: 2px solid var(--neon-border); box-shadow: 0 0 25px var(--neon-glow); text-shadow: 0 0 12px rgba(255, 26, 64, 0.9);}
+        
+        .save-edit-btn { width: 100%; background: rgba(7, 9, 19, 0.95); color: var(--text-white); border: 2px solid #ec4899; padding: 18px; font-size: 20px; border-radius: 16px; cursor: pointer; font-weight: bold; margin-top: 15px; box-shadow: 0 0 15px rgba(236, 72, 153, 0.4); transition: all 0.2s;}
+        .save-edit-btn:active { transform: scale(0.98); box-shadow: 0 0 25px rgba(236, 72, 153, 0.8); background: rgba(236, 72, 153, 0.1); }
+        .restore-btn { width: 100%; background: rgba(19, 17, 44, 0.8); color: #facc15; border: 2px solid #eab308; padding: 18px; font-size: 20px; border-radius: 16px; cursor: pointer; font-weight: bold; margin-top: 10px; box-shadow: 0 0 20px rgba(234, 179, 8, 0.3); transition: all 0.2s;}
+        .restore-btn:active { box-shadow: 0 0 30px rgba(234, 179, 8, 0.7); filter: brightness(1.2); }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(5, 7, 15, 0.8); display: none; justify-content: center; align-items: center; z-index: 200; backdrop-filter: blur(8px);}
+        .modal-content { background: rgba(19, 17, 44, 0.95); padding: 25px; border-radius: 24px; width: 92%; max-width: 440px; box-shadow: 0 0 45px rgba(168, 85, 247, 0.5); max-height: 92vh; overflow-y: auto; border: 2px solid var(--neon-border);}
+        
+        .modal-header { border-bottom: 2px solid rgba(168, 85, 247, 0.3); padding-bottom: 15px; margin-bottom: 20px; text-align: center;}
+        .modal-header h3 { margin: 0; font-size: 20px; color: #ffffff; text-shadow: 0 0 12px rgba(255, 255, 255, 0.9); }
+        
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 16px; color: #ffffff; text-shadow: 0 0 6px rgba(255,255,255,0.6);}
+        .input-group input, .input-group select { width: 100%; padding: 12px; font-size: 18px; text-align: center; border: 2px solid var(--neon-border); border-radius: 14px; font-weight: bold; box-sizing: border-box; background: rgba(19, 17, 44, 0.6); color: #ffffff; box-shadow: 0 0 10px var(--neon-glow); outline: none;}
+        .input-group input:focus, .input-group select:focus { box-shadow: 0 0 25px rgba(168, 85, 247, 0.7); border-color: #ec4899; }
+        .input-group input[readonly] { background-color: rgba(19, 17, 44, 0.4); color: #ffffff; border-color: rgba(168, 85, 247, 0.5); box-shadow: none;}
+        .input-group select option { background: #13112c; color: #ffffff; }
+        
+        .btn-group { display: flex; gap: 15px; margin-top: 25px; border-top: 2px solid rgba(168, 85, 247, 0.3); padding-top: 20px;}
+        .btn-group button { flex: 1; padding: 14px; border: none; border-radius: 16px; cursor: pointer; font-size: 18px; font-weight: bold; box-shadow: 0 0 15px rgba(0,0,0,0.3); transition: all 0.2s;}
+        .btn-group button:active { transform: scale(0.97); filter: brightness(1.4); }
+        .confirm-btn { background: rgba(7, 9, 19, 0.95) !important; border: 2px solid #ec4899 !important; color: var(--text-white) !important; box-shadow: 0 0 15px rgba(236, 72, 153, 0.4) !important;}
+        .confirm-btn:active { background: rgba(236, 72, 153, 0.1) !important; }
+        .cancel-btn { background: rgba(19, 17, 44, 0.8) !important; border: 2px solid var(--neon-border) !important; color: #ffffff !important; box-shadow: 0 0 12px var(--neon-glow) !important; text-shadow: 0 0 6px rgba(255,255,255,0.8);}
+
+        .details-toggle-btn { background: rgba(19, 17, 44, 0.6); color: #ffffff; border: 2px dashed var(--neon-border); width: 100%; padding: 10px; border-radius: 12px; font-weight: bold; cursor: pointer; margin-bottom: 15px; box-shadow: 0 0 10px var(--neon-glow); transition: all 0.2s; text-shadow: 0 0 6px rgba(255,255,255,0.8);}
+        .details-toggle-btn:active { filter: brightness(1.4); }
+        .hidden-details { display: none; background: rgba(19, 17, 44, 0.8); padding: 10px; border-radius: 12px; margin-bottom: 15px; border: 1px solid rgba(168, 85, 247, 0.4); color: #ffffff;}
+        .hidden-details p { margin: 5px 0; font-size: 15px; display: flex; justify-content: space-between;}
+        
+        #editLiveCustomerBalance { font-size: 16px; font-weight: bold; text-align: center; margin-top: 8px; min-height: 24px; color: #ffffff; text-shadow: 0 0 8px rgba(255, 255, 255, 0.8); }
+
+        .color-red-val { color: #ff1a40 !important; font-weight: bold; text-shadow: 0 0 12px rgba(255, 26, 64, 0.9), 0 0 25px rgba(255, 26, 64, 0.5); }
+        .color-green-val { color: #00ff66 !important; font-weight: bold; text-shadow: 0 0 12px rgba(0, 255, 102, 0.9), 0 0 25px rgba(0, 255, 102, 0.5); }
+
+        #printReceiptArea { display: none; }
+        @media print {
+            @page { margin: 0; size: 80mm auto; }
+            body { margin: 0; padding: 0; background: #fff; color: #000; }
+            .header, .history-container, .modal-overlay, .unified-bottom-bar, .context-menu { display: none !important; }
+            #printReceiptArea { display: block !important; width: 76mm; margin: 0 auto; padding: 5px; font-family: 'Segoe UI', Tahoma, sans-serif; direction: rtl; color: #000; }
+            .print-header { font-size: 18px; font-weight: bold; margin-bottom: 5px; border-bottom: 1px dashed #000; padding-bottom: 5px; text-align: center;}
+            .print-meta { font-size: 13px; margin-bottom: 8px; text-align: right; line-height: 1.4;}
+            .print-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 12px;}
+            .print-table th { border-bottom: 1px solid #000; padding: 4px 0; text-align: center;}
+            .print-table td { padding: 4px 0; border-bottom: 1px dotted #888; text-align: center;}
+            .print-totals { border-top: 1px dashed #000; padding-top: 5px; text-align: right; font-size: 13px; font-weight: bold; line-height: 1.5;}
+            .print-footer { text-align: center; font-size: 11px; margin-top: 8px; border-top: 1px dashed #000; padding-top: 5px;}
+        }
+    </style>
+</head>
+<body onclick="closeAllMenus(event)">
+
+    <!-- الشاشة 1: الأرشيف (فواتير المبيعات) -->
+    <div id="invoices-list-view" class="view-section active-view">
+        <div class="header">
+            <button class="header-back-btn" onclick="window.location.href='sales.html'">
+                <span class="arrow">⬅</span>
+                <span class="text">BACK</span>
+            </button>
+            <span id="mainPageTitle" style="text-shadow: 0 0 12px rgba(255, 255, 255, 0.9);">فواتير البيع</span>
+            <div style="width: 40px;"></div> 
+        </div>
+        
+        <div class="history-container">
+            <div class="filter-section">
+                <div class="filter-header-row">
+                    <!-- القائمة في المنتصف وتم إزالة الآجل لأنه ضمن المبيعات -->
+                    <select class="filter-select" id="invoiceTypeFilter" onchange="applyMainFilter()">
+                        <option value="sales" selected>فواتير البيع</option>
+                        <option value="return">فواتير مرتجع</option>
+                        <option value="quotation">عروض أسعار</option>
+                    </select>
+                    <button class="search-toggle-btn" onclick="toggleFullSearch(event)">🔍</button>
+                </div>
+
+                <div class="full-search-area" id="fullSearchArea" onclick="event.stopPropagation()">
+                    <div class="search-container">
+                        <input type="text" id="historySearchInput" class="search-input" placeholder="ادخل بيانات البحث..." oninput="handleSearchInput()" onclick="this.select()">
+                        <div id="customerDropdown" class="dropdown-list"></div>
+                    </div>
+                    <div class="radio-group">
+                        <label><input type="radio" name="searchType" value="date" onchange="resetSearch()"> التاريخ</label>
+                        <label><input type="radio" name="searchType" value="customer" onchange="resetSearch()" checked> العميل</label>
+                        <label><input type="radio" name="searchType" value="number" onchange="resetSearch()"> الفاتورة</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="invoice-list" id="invoiceListContainer"></div>
+        </div>
+    </div>
+
+    <!-- الشريط السفلي الموحد للأرشيف -->
+    <div class="unified-bottom-bar" onclick="event.stopPropagation()">
+        <div style="font-size: 20px; color: var(--neon-border);">📅</div>
+        <div class="bottom-bar-dropdown" onclick="toggleDurationMenu(event)">
+            <span id="currentDurationLabelOutside">مدى العمل (الكل)</span>
+            <span>▼</span>
+            <div class="dropdown-menu" id="durationDropdownOutside" style="right:0; left:auto;">
+                <div class="dropdown-menu-item" onclick="filterByDate('اليوم')">اليوم</div>
+                <div class="dropdown-menu-item" onclick="filterByDate('أمس')">أمس</div>
+                <div class="dropdown-menu-item" onclick="filterByDate('اخر 7 ايام')">اخر 7 ايام</div>
+                <div class="dropdown-menu-item" onclick="filterByDate('هذا الشهر')">هذا الشهر</div>
+                <div class="dropdown-menu-item" onclick="filterByDate('مدى العمل')">مدى العمل (الكل)</div>
+                <div class="dropdown-menu-item" onclick="openCustomDateModal()">📅 تاريخ مخصص...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة التاريخ المخصص -->
+    <div class="modal-overlay" id="customDateModal">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header"><h3>تحديد تاريخ مخصص</h3></div>
+            <div class="input-group"><label>من تاريخ:</label><input type="date" id="dateFrom"></div>
+            <div class="input-group"><label>إلى تاريخ:</label><input type="date" id="dateTo"></div>
+            <div class="btn-group">
+                <button class="cancel-btn" onclick="document.getElementById('customDateModal').style.display='none'">إلغاء</button>
+                <button class="confirm-btn" onclick="applyCustomDate()">تطبيق البحث</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- القائمة العائمة للفاتورة من الأرشيف -->
+    <div id="customContextMenu" class="context-menu" onclick="event.stopPropagation()">
+        <div onclick="viewInvoiceFromMenu()">عرض الفاتورة</div>
+        <div onclick="openFullEditScreen()">تعديل الفاتورة</div>
+        <div onclick="deleteInvoiceFromMenu()" style="color:#ff1a40;">حذف الفاتورة</div>
+        <div onclick="printInvoiceFromMenu()">طباعة الفاتورة (حراري)</div>
+        <div id="convertQuoteMenuOpt" onclick="convertToSalesInvoice()" style="display:none; color:#00ff66;">⚡ تحويل لفاتورة بيع</div>
+    </div>
+
+    <!-- الشاشة 2: العرض (تفاصيل الفاتورة) -->
+    <div id="invoice-details-view" class="view-section">
+        <div class="header">
+            <button class="header-back-btn" onclick="switchView('invoices-list-view')">
+                <span class="arrow">⬅</span>
+                <span class="text">BACK</span>
+            </button>
+            <span style="text-shadow: 0 0 12px rgba(255, 255, 255, 0.9);">عرض الفاتورة</span>
+            
+            <div style="position: relative;" onclick="event.stopPropagation()">
+                <button class="header-menu-btn" onclick="toggleMenuDirect(event, 'detailsMenuDropdown')">≡</button>
+                <div class="header-dropdown-wide" id="detailsMenuDropdown" style="width: 220px; left:0;">
+                    <div class="dropdown-item" onclick="printSingleInvoiceThermal()">🖨️ طباعة حرارية</div>
+                    <div class="dropdown-item" onclick="toggleAccordionSubMenu(event, 'excelSubDetails')">📊 إكسيل ▼</div>
+                    <div class="sub-accordion-content" id="excelSubDetails">
+                        <div class="sub-dropdown-item" onclick="exportSingleInvoiceExcel()">📤 تصدير بيانات</div>
+                        <div class="sub-dropdown-item" onclick="alert('استيراد الفواتير سيتم دعمه في التحديثات القادمة')">📥 استيراد بيانات</div>
+                    </div>
+                    <div class="dropdown-item" onclick="toggleAccordionSubMenu(event, 'pdfSubDetails')">📄 بي دي إف ▼</div>
+                    <div class="sub-accordion-content" id="pdfSubDetails">
+                        <div class="sub-dropdown-item" onclick="window.print()">📤 تصدير (حفظ PDF)</div>
+                        <div class="sub-dropdown-item" onclick="alert('استيراد ملفات الـ PDF غير مدعوم حالياً')">📥 استيراد بيانات</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="details-container" id="invoiceDetailsContainer"></div>
+    </div>
+
+    <!-- الشاشة 3: التعديل الشامل -->
+    <div id="full-edit-view" class="view-section">
+        <div class="header">
+            <button class="header-back-btn" onclick="switchView('invoices-list-view')">
+                <span class="arrow">⬅</span>
+                <span class="text">BACK</span>
+            </button>
+            <span style="text-shadow: 0 0 12px rgba(255, 255, 255, 0.9);">تعديل الفاتورة</span>
+            <div style="width: 40px;"></div>
+        </div>
+        
+        <div class="edit-screen-container">
+            <div id="editInvoiceHeader" class="details-header-card"></div>
+            
+            <div class="search-container" style="margin-bottom: 15px;">
+                <input type="text" id="editProductSearch" class="search-input" style="width: 100%;" placeholder="ابحث لإضافة صنف موجود..." oninput="searchProductsForEdit()" onclick="this.select()">
+                <div id="editProductResults" class="dropdown-list" style="top: 100%;"></div>
+            </div>
+
+            <table>
+                <thead><tr><th style="text-align: right;">الصنف</th><th>السعر</th><th>الكمية</th><th>الإجمالي</th></tr></thead>
+                <tbody id="editInvoiceItemsTable"></tbody>
+            </table>
+            
+            <div class="details-total">الإجمالي: <span id="liveEditTotal" class="color-red-val">0</span></div>
+            
+            <button class="save-edit-btn" onclick="openSaveEditModal()">تأكيد الحسابات النهائية</button>
+            <button class="restore-btn" onclick="restoreInvoice()">🔄 استعادة الفاتورة للأصل</button>
+        </div>
+    </div>
+
+    <!-- الغطاء 1: تعديل الصنف -->
+    <div class="modal-overlay" id="editItemModal">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header"><h3 id="editItemName">تعديل الصنف</h3></div>
+            <button class="details-toggle-btn" onclick="toggleDetails()">+ عرض تفاصيل المخزن والمورد</button>
+            <div class="hidden-details" id="hiddenDetailsBox">
+                <p>سعر الشراء: <strong id="editPurchasePrice">0</strong></p>
+                <p>الرصيد بالمخزن: <strong id="editStockInfo">0</strong></p>
+                <p>المورد: <strong id="editSupplier">---</strong></p>
+            </div>
+            <div class="input-group"><label>تعديل السعر:</label><input type="number" id="editItemPrice" onclick="this.select()"></div>
+            <div class="input-group"><label>تعديل الكمية:</label><input type="number" id="editItemQty" onclick="this.select()"></div>
+            <input type="hidden" id="editItemIndex">
+            <div class="btn-group">
+                <button class="cancel-btn" onclick="document.getElementById('editItemModal').style.display='none'">إلغاء</button>
+                <button class="confirm-btn" onclick="saveEditItem()">تحديث</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- الغطاء 2: الحفظ النهائي للتعديل -->
+    <div class="modal-overlay" id="saveEditModalOverlay">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header" style="flex-direction: column; align-items: flex-start; gap: 5px;">
+                <span class="invoice-type-badge" id="modalInvoiceTypeBadge" style="color:#e879f9; font-weight:bold;"></span>
+                <h3>تأكيد حفظ فاتورة رقم: <span id="modalInvoiceIdText"></span></h3>
+            </div>
+            
+            <div class="input-group"><label style="color:#ff1a40;">الخصم:</label><input type="number" id="modalDiscount" value="0" onclick="this.select()" oninput="calculateModalTotals()"></div>
+            <div class="input-group"><label>الصافي المطلوب:</label><input type="number" id="modalTotal" class="color-red-val" value="0" readonly></div>
+            <div class="input-group"><label style="color:#00ff66;">المدفوع نقداً:</label><input type="number" id="modalPaid" class="color-green-val" value="0" onclick="this.select()" oninput="calculateModalTotals()"></div>
+            <div class="input-group"><label>المتبقي (آجل):</label><input type="number" id="modalRemaining" class="color-red-val" value="0" readonly dir="ltr"></div>
+            
+            <div class="input-group">
+                <label>الخزينة (استرداد أو تحصيل):</label>
+                <select id="modalVaultSelect">
+                    <option value="main">الخزينة الرئيسية (كاش)</option>
+                    <option value="insta">إنستا (InstaPay)</option>
+                    <option value="wallet">المحفظة الإلكترونية</option>
+                </select>
+            </div>
+
+            <div class="input-group"><label>تاريخ الفاتورة:</label><input type="date" id="modalDate" onclick="this.select()"></div>
+            
+            <div style="position: relative; margin-bottom: 12px;">
+                <div class="input-group" style="margin-bottom: 0;">
+                    <label>اسم العميل:</label>
+                    <input type="text" id="modalCustomer" onclick="this.select()" oninput="handleEditCustomerInput()" placeholder="اتركه فارغاً إن كان نقدي">
+                </div>
+                <div id="editCustomerResults" class="dropdown-list"></div>
+            </div>
+            
+            <div id="editLiveCustomerBalance"></div>
+            
+            <div class="btn-group">
+                <button class="cancel-btn" onclick="closeSaveEditModal()">رجوع</button>
+                <button class="confirm-btn" onclick="confirmFinalEdit()">حفظ التعديلات</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- مساحة الطباعة المخفية -->
+    <div id="printReceiptArea"></div>
+<script src="db.js"></script>
+<script>
+    let productsDB = DB.getProducts();
+    let customersDB = DB.getCustomers();
+    let invoicesDB = DB.getSalesInvoices();
+
+    function closeAllMenus(e) {
+        let ctx = document.getElementById('customContextMenu');
+        if(ctx) ctx.style.display = 'none';
+        let dr = document.getElementById('customerDropdown');
+        if(dr) dr.style.display = 'none';
+        let res = document.getElementById('editCustomerResults'); 
+        if(res) res.style.display = 'none';
+        let d1 = document.getElementById('durationDropdownOutside');
+        if(d1) d1.style.display = 'none';
+        ['detailsMenuDropdown', 'excelSubDetails', 'pdfSubDetails'].forEach(id => {
+            let el = document.getElementById(id);
+            if(el) el.style.display = 'none';
+        });
+    }
+
+    function toggleMenuDirect(e, menuId) {
+        e.stopPropagation(); closeAllMenus();
+        let targetMenu = document.getElementById(menuId);
+        if(targetMenu) targetMenu.style.display = 'block';
+    }
+
+    function toggleAccordionSubMenu(e, subMenuId) {
+        e.stopPropagation(); 
+        let menu = document.getElementById(subMenuId);
+        let currentDisplay = menu.style.display;
+        ['excelSubDetails', 'pdfSubDetails'].forEach(id => {
+            if(id !== subMenuId) {
+                let el = document.getElementById(id);
+                if(el) el.style.display = 'none';
+            }
+        });
+        menu.style.display = currentDisplay === 'block' ? 'none' : 'block';
+    }
+
+    function toggleDurationMenu(e) {
+        e.stopPropagation();
+        closeAllMenus();
+        let m = document.getElementById('durationDropdownOutside');
+        if(m) m.style.display = m.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function toggleFullSearch(e) {
+        e.stopPropagation();
+        const box = document.getElementById('fullSearchArea');
+        if (box.style.display === 'block') { box.style.display = 'none'; } 
+        else { closeAllMenus(); box.style.display = 'block'; }
+    }
+
+    function applyMainFilter() {
+        const select = document.getElementById('invoiceTypeFilter');
+        const text = select.options[select.selectedIndex].text;
+        document.getElementById('mainPageTitle').innerText = text;
+        renderInvoicesHistory();
+    }
+
+    let dateFilterRange = { type: 'all' }; 
+    
+    function filterByDate(rangeLabel) {
+        closeAllMenus();
+        document.getElementById('currentDurationLabelOutside').innerText = rangeLabel;
+        const today = new Date();
+        const getStr = (d) => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+        
+        if(rangeLabel === 'مدى العمل' || rangeLabel === 'مدى العمل (الكل)') dateFilterRange = { type: 'all' };
+        else if(rangeLabel === 'اليوم') dateFilterRange = { type: 'exact', value: getStr(today) };
+        else if(rangeLabel === 'أمس') {
+            let y = new Date(today); y.setDate(y.getDate()-1);
+            dateFilterRange = { type: 'exact', value: getStr(y) };
+        }
+        else if(rangeLabel === 'اخر 7 ايام') {
+            let lastWeek = new Date(today); lastWeek.setDate(lastWeek.getDate()-7);
+            dateFilterRange = { type: 'range', from: getStr(lastWeek), to: getStr(today) };
+        }
+        else if(rangeLabel === 'هذا الشهر') {
+            let firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+            dateFilterRange = { type: 'range', from: getStr(firstDay), to: getStr(today) };
+        }
+        renderInvoicesHistory();
+    }
+
+    function openCustomDateModal() { closeAllMenus(); document.getElementById('customDateModal').style.display = 'flex'; }
+    function applyCustomDate() {
+        const f = document.getElementById('dateFrom').value;
+        const t = document.getElementById('dateTo').value;
+        if(f && t) {
+            dateFilterRange = { type: 'range', from: f, to: t };
+            document.getElementById('currentDurationLabelOutside').innerText = `${f} إلى ${t}`;
+            document.getElementById('customDateModal').style.display = 'none';
+            renderInvoicesHistory();
+        }
+    }
+
+    function switchView(viewId) {
+        document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active-view'));
+        document.getElementById(viewId).classList.add('active-view');
+        if(viewId === 'invoices-list-view') renderInvoicesHistory();
+    }
+
+    function handleSearchInput() {
+        const query = document.getElementById('historySearchInput').value.trim().toLowerCase();
+        const searchType = document.querySelector('input[name="searchType"]:checked').value;
+        const dropdown = document.getElementById('customerDropdown');
+        dropdown.innerHTML = '';
+        
+        if (searchType === 'customer' && query.length > 0) {
+            const filtered = customersDB.filter(c => c.name.toLowerCase().includes(query));
+            if (filtered.length > 0) {
+                dropdown.style.display = 'block';
+                filtered.forEach(c => {
+                    const div = document.createElement('div'); div.className = 'list-search-item'; div.innerText = c.name;
+                    div.onclick = (e) => { e.stopPropagation(); document.getElementById('historySearchInput').value = c.name; dropdown.style.display = 'none'; renderInvoicesHistory(); };
+                    dropdown.appendChild(div);
+                });
+            } else dropdown.style.display = 'none';
+        } else dropdown.style.display = 'none';
+        renderInvoicesHistory();
+    }
+
+    function resetSearch() {
+        document.getElementById('historySearchInput').value = '';
+        document.getElementById('customerDropdown').style.display = 'none';
+        renderInvoicesHistory();
+    }
+
+    function formatIdDisplay(id) {
+        let idStr = id.toString();
+        if(idStr.length > 10) return idStr.slice(-5);
+        return idStr;
+    }
+
+    function renderInvoicesHistory() {
+        const container = document.getElementById('invoiceListContainer');
+        const filterType = document.getElementById('invoiceTypeFilter').value;
+        const searchQuery = document.getElementById('historySearchInput').value.toLowerCase();
+        const searchType = document.querySelector('input[name="searchType"]:checked').value;
+        container.innerHTML = ''; 
+        
+        let sortedInvoices = [...invoicesDB].sort((a, b) => b.id - a.id);
+
+        sortedInvoices.forEach(inv => {
+            let isNormalSale = (inv.type === 'all' || inv.type === 'sales' || inv.type === 'delayed');
+            
+            // التعديل هنا: فواتير البيع (sales) بتعرض الكاش والآجل مع بعض
+            if (filterType === 'sales' && !isNormalSale) return;
+            if (filterType === 'return' && inv.type !== 'return') return;
+            if (filterType === 'quotation' && inv.type !== 'quotation') return;
+            
+            if (searchQuery !== '') {
+                if (searchType === 'number' && !inv.id.toString().includes(searchQuery)) return;
+                if (searchType === 'customer') {
+                    let cName = inv.customer ? inv.customer.toLowerCase() : "مبيعات نقدية";
+                    if (!cName.includes(searchQuery)) return;
+                }
+                if (searchType === 'date' && !inv.date.includes(searchQuery)) return;
+            }
+
+            if (dateFilterRange.type === 'exact' && inv.date !== dateFilterRange.value) return;
+            if (dateFilterRange.type === 'range' && (inv.date < dateFilterRange.from || inv.date > dateFilterRange.to)) return;
+
+            const card = document.createElement('div');
+            card.className = 'invoice-card';
+            
+            card.onclick = (e) => {
+                e.stopPropagation(); closeAllMenus();
+                selectedInvoiceId = inv.id;
+                const menu = document.getElementById('customContextMenu');
+                const convertOpt = document.getElementById('convertQuoteMenuOpt');
+                
+                if (inv.type === 'quotation') {
+                    convertOpt.style.display = 'block';
+                } else {
+                    convertOpt.style.display = 'none';
+                }
+
+                menu.style.display = 'block';
+                let leftPos = e.pageX - 90; if (leftPos < 10) leftPos = 10;
+                menu.style.left = leftPos + 'px';
+                menu.style.top = (e.pageY - 20) + 'px';
+            };
+
+            let subTotal = inv.items.reduce((sum, item) => {
+                let itemTotal = item.total !== undefined ? parseFloat(item.total) : ((parseFloat(item.price) || 0) * (parseFloat(item.qty) || 0));
+                return sum + (isNaN(itemTotal) ? 0 : itemTotal);
+            }, 0);
+            let finalTotal = subTotal - (parseFloat(inv.discount) || 0);
+
+            // التعديل هنا: علامات ملونة وتلوين الإجمالي
+            let badge = inv.type === 'return' ? '🟠 مرتجع' : inv.type === 'quotation' ? '⚫ عرض سعر' : inv.type === 'delayed' ? '🔴 آجل' : '🟢 بيع كاش';
+            
+            let amountColor = inv.type === 'delayed' ? '#ff1a40' : (inv.type === 'return' ? '#f59e0b' : (inv.type === 'quotation' ? '#ffffff' : '#00ff66'));
+            let shadowColor = inv.type === 'delayed' ? 'rgba(255, 26, 64, 0.8)' : (inv.type === 'return' ? 'rgba(245, 158, 11, 0.8)' : (inv.type === 'quotation' ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 255, 102, 0.8)'));
+
+            let dispName = inv.customer ? inv.customer : "مبيعات نقدية";
+
+            card.innerHTML = `
+                <div class="inv-info">
+                    <div class="inv-customer">${dispName} <span style="font-size:12px;">(${badge})</span></div>
+                    <div class="inv-meta">فاتورة رقم: ${formatIdDisplay(inv.id)}</div>
+                    <div class="inv-meta">${inv.date}</div>
+                </div>
+                <div class="inv-amount" style="color: ${amountColor}; text-shadow: 0 0 12px ${shadowColor};">${finalTotal.toFixed(2)}</div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    let selectedInvoiceId = null;
+    function viewInvoiceFromMenu() { closeAllMenus(); openInvoiceDetails(selectedInvoiceId); }
+    function printInvoiceFromMenu() { closeAllMenus(); printSingleInvoiceThermal(); }
+    
+    function deleteInvoiceFromMenu() {
+        closeAllMenus();
+        let invIndex = invoicesDB.findIndex(i => i.id === selectedInvoiceId);
+        let inv = invoicesDB[invIndex];
+
+        if(confirm(`تأكيد ⚠️: هل أنت متأكد من حذف الفاتورة رقم ${formatIdDisplay(selectedInvoiceId)}؟ سيتم استرداد/خصم المبالغ من الخزينة والمخزن.`)) {
+            
+            let isReturn = (inv.type === 'return');
+            let isQuotation = (inv.type === 'quotation');
+
+            // 1. إعادة المخزن
+            if(!isQuotation) {
+                inv.items.forEach(item => { 
+                    let p = productsDB.find(x => x.id === item.id); 
+                    if(p) {
+                        if (isReturn) {
+                            if (p.lots && p.lots.length > 0) p.lots[0].stock -= item.qty;
+                            else p.stock = (p.stock || 0) - item.qty;
+                        } else {
+                            if (p.lots && p.lots.length > 0) p.lots[0].stock += item.qty;
+                            else p.stock = (p.stock || 0) + item.qty;
+                        }
+                    } 
+                });
+                DB.saveProducts(productsDB);
+            }
+            
+            // 2. تصفية رصيد العميل
+            let subTotal = inv.items.reduce((sum, item) => sum + (item.total !== undefined ? item.total : (parseFloat(item.price) || 0) * (parseFloat(item.qty) || 0)), 0);
+            let finalReq = subTotal - (parseFloat(inv.discount) || 0);
+            let rem = finalReq - (parseFloat(inv.paid) || 0);
+            
+            if(inv.customer && rem > 0 && !isQuotation) {
+                let cust = customersDB.find(c => c.name === inv.customer);
+                if(cust) { 
+                    if (isReturn) cust.balance += rem; // عكس المرتجع (يرجع الدين)
+                    else cust.balance -= rem; // عكس البيع (يقل الدين)
+                    DB.saveCustomers(customersDB); 
+                }
+            }
+
+            // 3. عكس الخزينة
+            let oldPaid = parseFloat(inv.paid) || 0;
+            if (!isQuotation && oldPaid > 0) {
+                let vData = DB.getVaults();
+                let vaultKey = inv.vault || 'main';
+                
+                vData[vaultKey] = (parseFloat(vData[vaultKey]) || 0) + (isReturn ? oldPaid : -oldPaid);
+                DB.saveVaults(vData);
+
+                let tMoves = DB.getTreasuryMoves();
+                tMoves.push({
+                    id: Date.now(), type: 'correction', vault: vaultKey, 
+                    amountAdd: isReturn ? oldPaid : 0, amountDeduct: isReturn ? 0 : oldPaid,
+                    notes: `تعديل/استرداد لحذف فاتورة ${isReturn ? 'مرتجع' : 'مبيعات'} رقم ${formatIdDisplay(inv.id)}`, date: new Date().toISOString().split('T')[0]
+                });
+                DB.saveTreasuryMoves(tMoves);
+            }
+
+            invoicesDB.splice(invIndex, 1);
+            DB.saveSalesInvoices(invoicesDB);
+            renderInvoicesHistory();
+            alert("تم حذف الفاتورة وتعديل الأرصدة والخزينة بنجاح.");
+        }
+    }
+
+    function convertToSalesInvoice() {
+        closeAllMenus();
+        let inv = invoicesDB.find(i => i.id === selectedInvoiceId);
+        if(!inv || inv.type !== 'quotation') return;
+
+        localStorage.setItem('seraj_draft_invoice', JSON.stringify(inv.items));
+        localStorage.setItem('seraj_draft_customer', inv.customer || '');
+        window.location.href = 'sales.html';
+    }
+
+    let originalInvoiceData = null;
+    let editingInvoiceData = null; 
+
+    function openFullEditScreen() {
+        closeAllMenus();
+        const inv = invoicesDB.find(i => i.id === selectedInvoiceId);
+        if(!inv) return;
+        
+        originalInvoiceData = JSON.parse(JSON.stringify(inv)); 
+        editingInvoiceData = JSON.parse(JSON.stringify(inv)); 
+        
+        let headerHtml = `
+            <div style="display:flex; justify-content:space-between; color:#ffffff; font-weight:bold;"><span>رقم الفاتورة: <strong>${formatIdDisplay(inv.id)}</strong></span><span>${inv.date}</span></div>
+            <div style="font-size: 20px; color:#ffffff; text-shadow:0 0 8px #fff; margin-top:8px;">العميل الأصلي: <strong style="color:#38bdf8;">${inv.customer || "بدون عميل"}</strong></div>
+            <div style="color:#00ff66; text-shadow:0 0 8px #00ff66; margin-top:8px;">المدفوع مسبقاً: <strong>${inv.paid} جنيه</strong></div>
+        `;
+        document.getElementById('editInvoiceHeader').innerHTML = headerHtml;
+
+        renderEditTable();
+        switchView('full-edit-view');
+    }
+
+    function restoreInvoice() {
+        if(confirm("هل تريد إرجاع الفاتورة لحالتها الأصلية؟")) {
+            editingInvoiceData = JSON.parse(JSON.stringify(originalInvoiceData));
+            renderEditTable();
+        }
+    }
+
+    function renderEditTable() {
+        const tbody = document.getElementById('editInvoiceItemsTable');
+        tbody.innerHTML = '';
+        let currentSubTotal = 0;
+        
+        editingInvoiceData.items.forEach((item, index) => {
+            let itemPrice = parseFloat(item.price) || 0;
+            let itemQty = parseFloat(item.qty) || 0;
+            item.total = itemPrice * itemQty;
+            currentSubTotal += item.total;
+            const tr = document.createElement('tr');
+            tr.className = 'swipe-row';
+            
+            let startX = 0; let isDown = false; let isSwiping = false; let isLongPress = false; let pressTimer;
+
+            const startAction = (x) => {
+                startX = x; isDown = true; isSwiping = false; isLongPress = false; tr.style.transition = 'none';
+                pressTimer = setTimeout(() => {
+                    isLongPress = true; isDown = false; 
+                    
+                    document.getElementById('editItemName').innerText = item.name;
+                    document.getElementById('editItemPrice').value = item.price;
+                    document.getElementById('editItemQty').value = item.qty;
+                    document.getElementById('editItemIndex').value = index;
+                    
+                    let p = productsDB.find(x => x.id === item.id);
+                    document.getElementById('editPurchasePrice').innerText = (p ? (p.lots && p.lots.length > 0 ? p.lots[p.lots.length-1].purchasePrice : p.purchasePrice) : 0) + " جنيه";
+                    document.getElementById('editStockInfo').innerText = (p ? (p.lots ? p.lots.reduce((s,l)=>s+l.stock,0) : p.stock) : 0);
+                    document.getElementById('editSupplier').innerText = (p ? (p.lots && p.lots.length>0 ? p.lots[0].supplier : p.supplier) : "---");
+                    document.getElementById('hiddenDetailsBox').style.display = 'none';
+                    
+                    document.getElementById('editItemModal').style.display = 'flex';
+                }, 600);
+            };
+
+            const moveAction = (x) => {
+                if (!isDown) return;
+                let diffX = x - startX;
+                if (Math.abs(diffX) > 15) { isSwiping = true; clearTimeout(pressTimer); tr.style.transform = `translateX(${diffX}px)`; }
+            };
+
+            const endAction = (x) => {
+                if (!isDown && !isSwiping) return; 
+                isDown = false; clearTimeout(pressTimer); tr.style.transition = 'transform 0.2s ease-out';
+                if (isSwiping) {
+                    let diffX = x - startX;
+                    if (Math.abs(diffX) > 80) {
+                        tr.style.transform = diffX > 0 ? 'translateX(100%)' : 'translateX(-100%)';
+                        setTimeout(() => { editingInvoiceData.items.splice(index, 1); renderEditTable(); }, 200);
+                    } else { tr.style.transform = 'translateX(0)'; }
+                } else if (!isLongPress) {
+                    editingInvoiceData.items[index].qty += 1; renderEditTable();
+                }
+                isSwiping = false;
+            };
+
+            tr.ontouchstart = (e) => { startAction(e.touches[0].clientX); };
+            tr.ontouchmove = (e) => { moveAction(e.touches[0].clientX); };
+            tr.ontouchend = (e) => { endAction(e.changedTouches[0].clientX); };
+            tr.onmousedown = (e) => { startAction(e.clientX); };
+            tr.onmousemove = (e) => { moveAction(e.clientX); };
+            tr.onmouseup = (e) => { endAction(e.clientX); };
+            tr.onmouseleave = (e) => { if (isDown) endAction(e.clientX); };
+
+            tr.innerHTML = `
+                <td style="text-align: right; font-weight:bold; color: #ffffff;">${item.name}</td>
+                <td style="color: #ffffff; font-weight:bold;">${itemPrice.toFixed(2)}</td>
+                <td style="font-weight:bold; color: #ffffff;">${itemQty}</td>
+                <td style="font-weight:bold; color: #ff1a40; text-shadow: 0 0 10px rgba(255, 26, 64, 0.8);">${item.total.toFixed(2)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+        document.getElementById('liveEditTotal').innerText = currentSubTotal.toFixed(2);
+    }
+
+    function toggleDetails() {
+        const box = document.getElementById('hiddenDetailsBox');
+        box.style.display = box.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function saveEditItem() {
+        let idx = document.getElementById('editItemIndex').value;
+        editingInvoiceData.items[idx].price = parseFloat(document.getElementById('editItemPrice').value) || 0;
+        editingInvoiceData.items[idx].qty = parseFloat(document.getElementById('editItemQty').value) || 1;
+        document.getElementById('editItemModal').style.display = 'none';
+        renderEditTable();
+    }
+
+    function searchProductsForEdit() {
+        const query = document.getElementById('editProductSearch').value.trim().toLowerCase();
+        const resultsDiv = document.getElementById('editProductResults');
+        resultsDiv.innerHTML = '';
+        if(query.length === 0) { resultsDiv.style.display = 'none'; return; }
+        const filtered = productsDB.filter(p => p.name.toLowerCase().includes(query));
+        if(filtered.length > 0) {
+            resultsDiv.style.display = 'block';
+            filtered.forEach(p => {
+                const div = document.createElement('div'); div.className = 'dropdown-item'; 
+                let pPrice = (p.lots && p.lots.length > 0) ? p.lots[p.lots.length - 1].price : (p.price || 0);
+                div.innerHTML = `<div><strong>${p.name}</strong></div> <span style="color:#ffffff;">${pPrice} ج</span>`;
+                div.onmousedown = (e) => {
+                    e.preventDefault();
+                    const ex = editingInvoiceData.items.findIndex(i => i.id === p.id);
+                    if(ex > -1) editingInvoiceData.items[ex].qty += 1;
+                    else editingInvoiceData.items.push({...p, price: pPrice, qty: 1, total: pPrice});
+                    document.getElementById('editProductSearch').value = ''; resultsDiv.style.display = 'none'; renderEditTable();
+                };
+                resultsDiv.appendChild(div);
+            });
+        }
+    }
+
+    function openSaveEditModal() {
+        if(editingInvoiceData.items.length === 0) return alert("لا يمكنك حفظ فاتورة فارغة!");
+        let subTotal = editingInvoiceData.items.reduce((s, i) => s + i.total, 0);
+        let tName = editingInvoiceData.type === 'return' ? "فاتورة مرتجع" : (editingInvoiceData.type === 'quotation' ? "عرض سعر" : "فاتورة بيع");
+        document.getElementById('modalInvoiceIdText').innerText = formatIdDisplay(editingInvoiceData.id);
+        document.getElementById('modalInvoiceTypeBadge').innerText = tName;
+        
+        document.getElementById('modalTotal').value = subTotal;
+        document.getElementById('modalDiscount').value = editingInvoiceData.discount || 0;
+        document.getElementById('modalPaid').value = editingInvoiceData.paid || 0;
+        document.getElementById('modalDate').value = editingInvoiceData.date;
+        document.getElementById('modalCustomer').value = editingInvoiceData.customer || "";
+        document.getElementById('modalVaultSelect').value = editingInvoiceData.vault || "main";
+        
+        handleEditCustomerInput(); 
+        calculateModalTotals();
+        document.getElementById('saveEditModalOverlay').style.display = 'flex';
+    }
+
+    function calculateModalTotals() {
+        let subTotal = editingInvoiceData.items.reduce((s, i) => s + i.total, 0);
+        let discount = parseFloat(document.getElementById('modalDiscount').value) || 0;
+        let finalRequired = subTotal - discount;
+        if(finalRequired < 0) finalRequired = 0;
+        document.getElementById('modalTotal').value = finalRequired.toFixed(2); 
+        
+        let paidInput = document.getElementById('modalPaid');
+        
+        // منع التعديل على المبلغ المدفوع في حالتين: مرتجع أو عرض سعر
+        if (editingInvoiceData.type === 'return') {
+            paidInput.value = finalRequired.toFixed(2);
+            paidInput.readOnly = true;
+            paidInput.style.backgroundColor = "rgba(19, 17, 44, 0.4)";
+            paidInput.style.borderColor = "#ff1a40";
+        } else if (editingInvoiceData.type === 'quotation') {
+            paidInput.value = 0;
+            paidInput.readOnly = true;
+            paidInput.style.backgroundColor = "rgba(19, 17, 44, 0.4)";
+            paidInput.style.borderColor = "#ff1a40";
+        } else {
+            paidInput.readOnly = false;
+            paidInput.style.backgroundColor = "rgba(19, 17, 44, 0.6)";
+            paidInput.style.borderColor = "var(--neon-border)";
+        }
+        
+        let paid = parseFloat(paidInput.value) || 0;
+        document.getElementById('modalRemaining').value = (finalRequired - paid).toFixed(2);
+    }
+
+    function handleEditCustomerInput() {
+        const query = document.getElementById('modalCustomer').value.trim();
+        const resultsDiv = document.getElementById('editCustomerResults');
+        const balDiv = document.getElementById('editLiveCustomerBalance');
+        resultsDiv.innerHTML = '';
+        if(query === "") { resultsDiv.style.display='none'; balDiv.innerText=''; return; }
+
+        let match = customersDB.find(c => c.name === query);
+        if(match) {
+            balDiv.innerText = match.balance > 0 ? `رصيد قديم (عليه): ${match.balance}` : match.balance < 0 ? `له: ${Math.abs(match.balance)}` : 'صافي';
+            balDiv.style.color = match.balance > 0 ? '#ff1a40' : '#00ff66';
+        } else balDiv.innerText = 'عميل جديد';
+    }
+
+    function confirmFinalEdit() {
+        let dbIndex = invoicesDB.findIndex(i => i.id === editingInvoiceData.id);
+        if(dbIndex === -1) return;
+
+        let finalDiscount = parseFloat(document.getElementById('modalDiscount').value) || 0;
+        let finalPaid = parseFloat(document.getElementById('modalPaid').value) || 0;
+        let finalDate = document.getElementById('modalDate').value;
+        let finalCust = document.getElementById('modalCustomer').value.trim();
+        let finalVault = document.getElementById('modalVaultSelect').value;
+        let finalSubTotal = editingInvoiceData.items.reduce((s, i) => s + i.total, 0);
+        let finalReq = finalSubTotal - finalDiscount;
+        
+        let finalRem = finalReq - finalPaid;
+        finalRem = Math.round(finalRem * 100) / 100;
+
+        // تنظيف الاسم الوهمي
+        if(finalCust === "null" || finalCust === "بدون عميل" || finalCust === "مبيعات نقدية") {
+            finalCust = "";
+        }
+
+        // قفل الأمان الصارم
+        if (finalRem > 0 && finalCust === "" && editingInvoiceData.type !== 'quotation' && editingInvoiceData.type !== 'return') {
+            alert("❌ تنبيه هام: لا يمكن حفظ فاتورة آجلة (بها متبقي) بدون تسجيل اسم العميل!");
+            return; 
+        }
+
+        let oldInv = invoicesDB[dbIndex];
+        let oldReq = oldInv.items.reduce((s, i) => s + ((i.total !== undefined) ? i.total : (parseFloat(i.price) || 0) * (parseFloat(i.qty) || 0)), 0) - (parseFloat(oldInv.discount)||0);
+        let oldRem = oldReq - (parseFloat(oldInv.paid)||0);
+        let oldPaid = parseFloat(oldInv.paid) || 0;
+        let oldVault = oldInv.vault || 'main';
+
+        let isReturn = (oldInv.type === 'return');
+        let isQuotation = (oldInv.type === 'quotation');
+
+        // 1. الخزينة 
+        let vaultsDB = DB.getVaults();
+        let tMoves = DB.getTreasuryMoves();
+        let vaultChanged = false;
+        
+        if(oldPaid > 0 && !isQuotation) {
+            vaultsDB[oldVault] = (parseFloat(vaultsDB[oldVault]) || 0) + (isReturn ? oldPaid : -oldPaid);
+            tMoves.push({
+                id: Date.now(), type: 'correction', vault: oldVault, 
+                amountAdd: isReturn ? oldPaid : 0, amountDeduct: isReturn ? 0 : oldPaid,
+                notes: `استرداد لتعديل فاتورة ${isReturn ? 'مرتجع' : 'مبيعات'} رقم ${formatIdDisplay(oldInv.id)}`, date: finalDate
+            });
+            vaultChanged = true;
+        }
+        
+        if(finalPaid > 0 && !isQuotation) {
+            vaultsDB[finalVault] = (parseFloat(vaultsDB[finalVault]) || 0) + (isReturn ? -finalPaid : finalPaid);
+            tMoves.push({
+                id: Date.now() + 1, type: isReturn ? 'return_sale' : 'sales', vault: finalVault, 
+                amountAdd: isReturn ? 0 : finalPaid, amountDeduct: isReturn ? finalPaid : 0,
+                notes: `تحصيل/سداد لتعديل فاتورة ${isReturn ? 'مرتجع' : 'مبيعات'} رقم ${formatIdDisplay(editingInvoiceData.id)}`, date: finalDate
+            });
+            vaultChanged = true;
+        }
+
+        if(vaultChanged) { DB.saveVaults(vaultsDB); DB.saveTreasuryMoves(tMoves); }
+        
+        // 2. عكس رصيد العميل القديم
+        if(oldInv.customer && !isQuotation) {
+            let c = customersDB.find(x => x.name === oldInv.customer);
+            if(c) {
+                if (isReturn) c.balance += oldRem;
+                else c.balance -= oldRem;
+            }
+        }
+        
+        // 3. عكس المخزن القديم
+        if (!isQuotation) {
+            oldInv.items.forEach(oldItem => {
+                let p = productsDB.find(x => x.id === oldItem.id);
+                if(p) {
+                    if (isReturn) {
+                        if (p.lots && p.lots.length > 0) p.lots[0].stock -= oldItem.qty;
+                        else p.stock = (p.stock || 0) - oldItem.qty;
+                    } else {
+                        if (p.lots && p.lots.length > 0) p.lots[0].stock += oldItem.qty;
+                        else p.stock = (p.stock || 0) + oldItem.qty;
+                    }
+                }
+            });
+        }
+
+        // 4. تطبيق الرصيد الجديد للعميل
+        if(finalCust !== "" && !isQuotation) {
+            let c = customersDB.find(x => x.name === finalCust);
+            if(!c) { c = {id:Date.now(), name:finalCust, balance:0}; customersDB.push(c); }
+            if (isReturn) c.balance -= finalRem;
+            else c.balance += finalRem;
+        }
+        
+        // 5. تطبيق المخزن الجديد
+        if (!isQuotation) {
+            editingInvoiceData.items.forEach(newItem => {
+                let p = productsDB.find(x => x.id === newItem.id);
+                if(p) {
+                    if (isReturn) {
+                        if (p.lots && p.lots.length > 0) p.lots[0].stock += newItem.qty;
+                        else p.stock = (p.stock || 0) + newItem.qty;
+                    } else {
+                        if (p.lots && p.lots.length > 0) p.lots[0].stock -= newItem.qty;
+                        else p.stock = (p.stock || 0) - newItem.qty;
+                    }
+                }
+            });
+        }
+
+        DB.saveCustomers(customersDB);
+        DB.saveProducts(productsDB);
+
+        let newType = oldInv.type;
+        if (oldInv.type !== 'return' && oldInv.type !== 'quotation') {
+            newType = finalRem > 0 ? 'delayed' : 'sales';
+        }
+
+        invoicesDB[dbIndex] = {
+            id: editingInvoiceData.id,
+            type: newType,
+            date: finalDate,
+            customer: finalCust !== "" ? finalCust : null,
+            total: finalReq,
+            remaining: finalRem,
+            discount: finalDiscount,
+            paid: finalPaid,
+            vault: finalVault,
+            items: editingInvoiceData.items,
+            notes: oldInv.notes
+        };
+        DB.saveSalesInvoices(invoicesDB);
+
+        document.getElementById('saveEditModalOverlay').style.display = 'none';
+        renderInvoicesHistory();
+        switchView('invoices-list-view');
+        
+        setTimeout(()=> alert("تم حفظ التعديلات وتحديث الخزينة والأرصدة بنجاح!"), 200);
+    }
+
+    function closeSaveEditModal() { document.getElementById('saveEditModalOverlay').style.display = 'none'; }
+
+    function openInvoiceDetails(invoiceId) {
+        const inv = invoicesDB.find(i => i.id === invoiceId);
+        if(!inv) return;
+        let sub = inv.items.reduce((s, i) => s + (i.total !== undefined ? i.total : (parseFloat(i.price) || 0) * (parseFloat(i.qty) || 0)), 0);
+        let finalReq = sub - (parseFloat(inv.discount)||0);
+        
+        let notesHtml = inv.notes ? `<div style="color:#facc15; font-weight:bold; margin-top:10px; padding-top:10px; border-top:1px dashed rgba(255,255,255,0.3);">ملاحظات الفاتورة: ${inv.notes}</div>` : '';
+
+        let html = `
+            <div class="details-header-card">
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                    <span style="color:#ffffff; font-weight:bold;">رقم الفاتورة: <strong>${formatIdDisplay(inv.id)}</strong></span>
+                    <span style="color:#ffffff; font-weight:bold;">التاريخ: <strong>${inv.date}</strong></span>
+                </div>
+                <div style="color:#ffffff; font-weight:bold;">العميل: <strong style="color:#38bdf8;">${inv.customer || "نقدي"}</strong></div>
+                ${notesHtml}
+            </div>
+            <table>
+                <thead><tr><th style="text-align:right;">الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead>
+                <tbody>
+        `;
+        inv.items.forEach(item => {
+            let itemTot = item.total !== undefined ? item.total : (parseFloat(item.price) || 0) * (parseFloat(item.qty) || 0);
+            html += `<tr><td style="text-align:right; color:#ffffff; font-weight:bold;">${item.name}</td><td>${item.qty}</td><td>${item.price}</td><td style="color:#ff1a40; font-weight:bold; text-shadow: 0 0 8px rgba(255, 26, 64, 0.8);">${itemTot.toFixed(2)}</td></tr>`;
+        });
+        html += `</tbody></table>
+        <div class="details-total" style="background: rgba(19, 17, 44, 0.95);">الإجمالي: <span style="color:#ff1a40;">${finalReq.toFixed(2)}</span></div>`;
+        
+        document.getElementById('invoiceDetailsContainer').innerHTML = html;
+        switchView('invoice-details-view'); 
+    }
+
+    function printSingleInvoiceThermal() {
+        closeAllMenus();
+        let inv = invoicesDB.find(i => i.id === selectedInvoiceId);
+        if(!inv) return;
+        let sub = inv.items.reduce((s, i) => s + (i.total !== undefined ? i.total : (parseFloat(i.price) || 0) * (parseFloat(i.qty) || 0)), 0);
+        let finalReq = sub - (parseFloat(inv.discount)||0);
+        let rem = finalReq - (parseFloat(inv.paid)||0);
+        
+        let itemsHtml = '';
+        inv.items.forEach(item => {
+            let itemTot = item.total !== undefined ? item.total : (parseFloat(item.price) || 0) * (parseFloat(item.qty) || 0);
+            itemsHtml += `<tr><td>${item.name}</td><td>${item.price}</td><td>${item.qty}</td><td>${itemTot.toFixed(2)}</td></tr>`;
+        });
+        
+        let printHtml = `
+            <div class="print-header">محلات سراج LED</div>
+            <div class="print-meta">
+                رقم: ${formatIdDisplay(inv.id)}<br>
+                تاريخ: ${inv.date}<br>
+                العميل: ${inv.customer || "نقدي"}<br>
+                ${inv.notes ? 'ملاحظات: ' + inv.notes + '<br>' : ''}
+            </div>
+            <table class="print-table">
+                <thead><tr><th>الصنف</th><th>السعر</th><th>الكمية</th><th>الإجمالي</th></tr></thead>
+                <tbody>${itemsHtml}</tbody>
+            </table>
+            <div class="print-totals">
+                الإجمالي: ${sub.toFixed(2)}<br>
+                الخصم: ${(parseFloat(inv.discount)||0).toFixed(2)}<br>
+                الصافي: ${finalReq.toFixed(2)}<br>
+                المدفوع: ${(parseFloat(inv.paid)||0).toFixed(2)}<br>
+                المتبقي: ${rem.toFixed(2)}
+            </div>
+            <div class="print-footer">شكراً لزيارتكم!</div>
+        `;
+        document.getElementById('printReceiptArea').innerHTML = printHtml;
+        window.print();
+    }
+
+    function exportSingleInvoiceExcel() {
+        closeAllMenus();
+        let inv = invoicesDB.find(i => i.id === selectedInvoiceId);
+        if(!inv) return;
+        let excelData = [
+            ["رقم الفاتورة", formatIdDisplay(inv.id), "التاريخ", inv.date],
+            ["العميل", inv.customer || "نقدي", "النوع", inv.type],
+            ["ملاحظات", inv.notes || ""],
+            [],
+            ["اسم الصنف", "السعر", "الكمية", "الإجمالي"]
+        ];
+        let sub = 0;
+        inv.items.forEach(item => {
+            let itemTot = item.total !== undefined ? item.total : (parseFloat(item.price) || 0) * (parseFloat(item.qty) || 0);
+            excelData.push([item.name, item.price, item.qty, itemTot]);
+            sub += itemTot;
+        });
+        let finalReq = sub - (parseFloat(inv.discount)||0);
+        excelData.push([]);
+        excelData.push(["الإجمالي", sub]);
+        excelData.push(["الخصم", parseFloat(inv.discount)||0]);
+        excelData.push(["الصافي", finalReq]);
+        excelData.push(["المدفوع", parseFloat(inv.paid)||0]);
+        excelData.push(["المتبقي", finalReq - (parseFloat(inv.paid)||0)]);
+
+        let ws = XLSX.utils.aoa_to_sheet(excelData);
+        let wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "الفاتورة");
+        XLSX.writeFile(wb, `Invoice_${formatIdDisplay(inv.id)}.xlsx`);
+    }
+
+    window.onload = () => { 
+        if(typeof DB !== 'undefined') DB.applySavedTheme();
+        applyMainFilter(); 
+    };
+</script>
+</body>
+</html>

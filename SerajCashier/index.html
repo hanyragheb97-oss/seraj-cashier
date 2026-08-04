@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سراج LED - الواجهة الرئيسية</title>
+    <style>
+        :root {
+            --neon-border: #a855f7;
+            --neon-glow: rgba(168, 85, 247, 0.5); 
+            --bg-dark-1: #070913;
+            --bg-dark-2: #120f29;
+            --card-bg: rgba(19, 17, 44, 0.88);
+            --text-white: #ffffff;        
+        }
+
+        body { 
+            font-family: 'Segoe UI', Tahoma, sans-serif; 
+            background: linear-gradient(135deg, var(--bg-dark-1), var(--bg-dark-2)); 
+            color: var(--text-white); 
+            margin: 0; 
+            padding: 0; 
+            user-select: none; 
+            min-height: 100vh; 
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .header { 
+            background: rgba(19, 17, 44, 0.95); 
+            backdrop-filter: blur(14px); 
+            padding: 25px 15px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            position: sticky; 
+            top: 0; 
+            z-index: 50; 
+            border-bottom: 3px solid var(--neon-border); 
+            box-shadow: 0 0 45px var(--neon-glow), 0 10px 25px rgba(0, 0, 0, 0.7);
+        }
+        
+        .brand-container {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            font-size: 36px;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+        .brand-siraj {
+            color: #ffffff;
+            text-shadow: 0 0 10px #ffffff, 0 0 20px #ffffff, 0 0 40px var(--neon-border), 0 0 70px var(--neon-border);
+        }
+        .led-l { color: #ff3333; text-shadow: 0 0 10px #ff3333, 0 0 25px #ff3333, 0 0 50px rgba(255, 51, 51, 0.8), 0 0 80px rgba(255, 51, 51, 0.5); }
+        .led-e { color: #00ff66; text-shadow: 0 0 10px #00ff66, 0 0 25px #00ff66, 0 0 50px rgba(0, 255, 102, 0.8), 0 0 80px rgba(0, 255, 102, 0.5); }
+        .led-d { color: #00bfff; text-shadow: 0 0 10px #00bfff, 0 0 25px #00bfff, 0 0 50px rgba(0, 191, 255, 0.8), 0 0 80px rgba(0, 191, 255, 0.5); }
+
+        .container { 
+            padding: 30px 15px; 
+            max-width: 800px; 
+            margin: auto; 
+        }
+        
+        .grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 20px; 
+        }
+        
+        .grid-item { 
+            background: var(--card-bg); 
+            backdrop-filter: blur(10px); 
+            border-radius: 24px; 
+            overflow: hidden; 
+            box-shadow: 0 0 22px var(--neon-glow); 
+            text-decoration: none; 
+            color: var(--text-white); 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            transition: all 0.2s ease; 
+            border: 2px solid var(--neon-border); 
+            cursor: pointer; 
+            padding: 35px 15px;
+        }
+        .grid-item:active { 
+            transform: scale(0.96); 
+            box-shadow: 0 0 45px rgba(236, 72, 153, 0.9); 
+            border-color: #ec4899;
+            filter: brightness(1.25); 
+        }
+        
+        .grid-item.full-width { 
+            grid-column: span 2; 
+            flex-direction: row; 
+            justify-content: center; 
+            gap: 25px; 
+            padding: 30px; 
+        }
+        
+        .icon-symbol { 
+            font-size: 55px; 
+            margin-bottom: 12px; 
+            filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.6)); 
+        }
+        .grid-item.full-width .icon-symbol { 
+            font-size: 65px; 
+            margin-bottom: 0; 
+        }
+
+        .title { 
+            text-align: center; 
+            font-weight: bold; 
+            font-size: 22px; 
+            width: 100%; 
+            color: #ffffff; 
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5); 
+        }
+        .grid-item.full-width .title { 
+            font-size: 26px; 
+            width: auto; 
+        }
+        .smart-title { 
+            color: #f472b6 !important; 
+            text-shadow: 0 0 15px rgba(244, 114, 182, 0.8) !important; 
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="brand-container">
+            <span class="brand-siraj">سراج</span>
+            <span>
+                <span class="led-l">L</span><span class="led-e">E</span><span class="led-d">D</span>
+            </span>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="grid">
+            <a href="store.html" class="grid-item full-width">
+                <span class="icon-symbol">📦</span>
+                <div class="title">مخزن المنتجات</div>
+            </a>
+            
+            <a href="purchases.html" class="grid-item">
+                <span class="icon-symbol">🛒</span>
+                <div class="title">شراء</div>
+            </a>
+            
+            <a href="sales.html" class="grid-item">
+                <span class="icon-symbol">💰</span>
+                <div class="title">بيع</div>
+            </a>
+            
+            <a href="suppliers.html" class="grid-item">
+                <span class="icon-symbol">🤝</span>
+                <div class="title">الموردين</div>
+            </a>
+            
+            <a href="customers.html" class="grid-item">
+                <span class="icon-symbol">👥</span>
+                <div class="title">العملاء</div>
+            </a>
+            
+            <a href="treasury.html" class="grid-item">
+                <span class="icon-symbol">🏦</span>
+                <div class="title">الخزنة</div>
+            </a>
+            
+            <a href="smart_accountant.html" class="grid-item">
+                <span class="icon-symbol">🧠</span>
+                <div class="title smart-title">المحاسب الذكي</div>
+            </a>
+        </div>
+    </div>
+
+    <script src="db.js"></script>
+    <script>
+        window.onload = () => {
+            if(typeof DB !== 'undefined') DB.applySavedTheme();
+        };
+    </script>
+</body>
+</html>
