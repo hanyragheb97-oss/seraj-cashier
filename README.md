@@ -1,0 +1,13 @@
+[purchases_history.html](https://github.com/user-attachments/files/30765535/purchases_history.html)
+[sales.html](https://github.com/user-attachments/files/30765536/sales.html)[purchases.html](https://github.com/user-attachments/files/30765555/purchases.html)
+[manifest.json](https://github.com/user-attachments/files/30765554/manifest.json)
+[index.html](https://github.com/user-attachments/files/30765553/index.html)
+<img width="1024" height="1024" alt="icon png" src="https://github.com/user-attachments/assets/23ac6869-d2e3-42cb-90c9-bbcf3f2e1531" />
+[history.html](https://github.com/user-attachments/files/30765547/history.html)
+[db.js](https://github.com/user-attachments/files/30765546/db.js)
+[customers.html](https://github.com/user-attachments/files/30765544/customers.html)
+[treasury.html](https://github.com/user-attachments/files/30765543/treasury.html)
+[sw.js](https://github.com/user-attachments/files/30765542/sw.js)
+[suppliers.html](https://github.com/user-attachments/files/30765540/suppliers.html)
+[store.html](https://github.com/user-attachments/files/30765538/store.html)
+[smart_accountant.html.html](https://github.com/user-attachments/files/30765537/smart_accountant.html.html)
